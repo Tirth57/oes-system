@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Notifications — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div><span style="font-weight:700">OES</span></div>
+  <div class="nav-links">
+    <a class="nav-link" id="back-link" href="dashboard.html">← Dashboard</a>
+  </div>
+  <div class="nav-user"><div class="dropdown"><div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">U</div><div class="dropdown-menu"><div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div><div class="text-xs text-muted" id="nav-user-role"></div></div><button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button></div></div></div>
+</nav>
+<div style="max-width:800px;margin:32px auto;padding:0 24px">
+  <div class="flex-between mb-3">
+    <div><h1>🔔 Notifications</h1><p class="text-muted text-sm mt-1">All your notifications</p></div>
+    <button class="btn btn-secondary btn-sm" onclick="markAll()">✓ Mark all read</button>
+  </div>
+  <div id="notifs-list"></div>
+  <div class="pagination mt-3" id="pagination"></div>
+</div>
+<script src="../js/app.js"></script>
+<script>
+const user = Auth.requireAuth();
+if(user){ const map={student:'../student/dashboard.html',examiner:'../examiner/dashboard.html',administrator:'../admin/dashboard.html'}; document.getElementById('back-link').href=map[user.role]||'../index.html'; }
+let page=1,limit=20,total=0;
+const icons={exam_scheduled:'📅',exam_reminder:'⏰',exam_submitted:'✅',result_published:'🏆',account_locked:'🔒',broadcast:'📢',individual:'✉️'};
+async function load(){
+  try{
+    const res=await api.get('/notifications?page='+page+'&limit='+limit);
+    const notifs=res.data?.data||[];
+    total=res.data?.pagination?.total||0;
+    document.getElementById('notifs-list').innerHTML=notifs.length?notifs.map(n=>`
+      <div class="card mb-2 ${n.is_read?'':'card'}" style="${n.is_read?'':'border-color:var(--primary)'}">
+        <div class="flex gap-2">
+          <div style="font-size:1.5rem">${icons[n.type]||'🔔'}</div>
+          <div style="flex:1">
+            <div class="flex-between"><div class="fw-medium">${n.title}</div><div class="text-xs text-muted">${Format.datetime(n.created_at)}</div></div>
+            <p class="text-sm text-muted mt-1">${n.message}</p>
+          </div>
+          ${!n.is_read?`<button class="btn-icon btn-sm" onclick="markOne('${n.id}',this)" title="Mark read">✓</button>`:'<span class="text-xs text-muted">Read</span>'}
+        </div>
+      </div>`).join(''):`<div class="empty-state"><div class="empty-icon">🔔</div><h3>No notifications yet</h3></div>`;
+    const pages=Math.ceil(total/limit);
+    document.getElementById('pagination').innerHTML=pages>1?Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="page=${i+1};load()">${i+1}</button>`).join(''):'';
+  }catch(err){ Toast.error(err.message); }
+}
+async function markOne(id,btn){ try{ await api.put('/notifications/'+id+'/read'); btn.closest('.card').style.borderColor=''; btn.remove(); }catch{} }
+async function markAll(){ try{ await api.put('/notifications/mark-all-read',{}); load(); Toast.success('All marked read'); }catch{} }
+load();
+</script>
+</body>
+</html>

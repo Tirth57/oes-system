@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Question Bank — OES Examiner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div><span style="font-weight:700">OES</span><span class="badge badge-warning">Examiner</span></div>
+  <div class="nav-links"><a class="nav-link" href="dashboard.html">🏠 Dashboard</a><a class="nav-link active" href="questions.html">❓ Questions</a><a class="nav-link" href="exams.html">📋 Exams</a><a class="nav-link" href="evaluation.html">📝 Review</a></div>
+  <div class="nav-user"><div class="dropdown"><div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">E</div><div class="dropdown-menu"><div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div></div><button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button></div></div></div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Examination</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item active" href="questions.html">❓ Question Bank</a>
+    <a class="sidebar-item" href="exams.html">📋 Manage Exams</a>
+    <a class="sidebar-item" href="evaluation.html">📝 Pending Reviews</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>Question Bank ❓</h1><p class="text-muted text-sm mt-1">Create and manage your questions</p></div>
+      <button class="btn btn-primary" onclick="openModal()">+ New Question</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3" style="padding:16px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input type="text" id="search" class="form-control" placeholder="Search questions..." oninput="load()" style="padding-left:36px"></div>
+        <select id="f-type" class="form-control" style="width:150px" onchange="load()"><option value="">All Types</option><option value="mcq">MCQ</option><option value="true_false">True/False</option><option value="short_answer">Short Answer</option></select>
+        <select id="f-diff" class="form-control" style="width:140px" onchange="load()"><option value="">All Difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select>
+        <select id="f-subject" class="form-control" style="width:180px" onchange="load()"><option value="">All Subjects</option></select>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Type</th><th>Difficulty</th><th>Subject</th><th>Marks</th><th>Usage</th><th>Actions</th></tr></thead>
+          <tbody id="q-tbody"><tr><td colspan="7" class="text-center text-muted" style="padding:40px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex-between mt-2" style="padding-top:12px;border-top:1px solid var(--border)">
+        <div class="text-muted text-sm" id="q-count"></div>
+        <div class="pagination" id="q-pagination"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- New/Edit Question Modal -->
+<div class="modal-overlay" id="question-modal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header"><div class="modal-title" id="modal-title">New Question</div><button class="modal-close" onclick="closeModal()">×</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Question Text *</label><textarea id="q-text" class="form-control" rows="3" placeholder="Enter your question..."></textarea></div>
+        <div class="form-group"><label class="form-label">Type *</label><select id="q-type" class="form-control" onchange="renderOptions()"><option value="mcq">MCQ</option><option value="true_false">True/False</option><option value="short_answer">Short Answer</option></select></div>
+        <div class="form-group"><label class="form-label">Difficulty *</label><select id="q-diff" class="form-control"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+        <div class="form-group"><label class="form-label">Subject *</label><select id="q-subject" class="form-control"></select></div>
+        <div class="form-group"><label class="form-label">Marks *</label><input type="number" id="q-marks" class="form-control" value="1" min="0.5" step="0.5"></div>
+      </div>
+      <div id="options-section"></div>
+      <div class="form-group"><label class="form-label">Explanation (Optional)</label><textarea id="q-explanation" class="form-control" rows="2" placeholder="Explain the correct answer..."></textarea></div>
+      <div id="model-ans-section" class="hidden"><div class="form-group"><label class="form-label">Model Answer</label><textarea id="q-model-ans" class="form-control" rows="3" placeholder="Model answer for manual grading reference..."></textarea></div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="save-q-btn" onclick="saveQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['examiner','administrator']);
+let page=1,limit=15,totalQ=0,editId=null,subjects=[];
+
+async function loadSubjects(){
+  try{
+    const res=await api.get('/questions/subjects');
+    subjects=res.data||[];
+    const sel=document.getElementById('q-subject'), fsel=document.getElementById('f-subject');
+    const opts=subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    sel.innerHTML='<option value="">Select subject</option>'+opts;
+    fsel.innerHTML='<option value="">All Subjects</option>'+opts;
+  }catch{}
+}
+
+async function load(){
+  const search=document.getElementById('search').value;
+  const type=document.getElementById('f-type').value;
+  const diff=document.getElementById('f-diff').value;
+  const subject=document.getElementById('f-subject').value;
+  const params=new URLSearchParams({page,limit});
+  if(search) params.append('search',search);
+  if(type) params.append('type',type);
+  if(diff) params.append('difficulty',diff);
+  if(subject) params.append('subjectId',subject);
+  try{
+    const res=await api.get('/questions?'+params);
+    const qs=res.data?.data||[];
+    totalQ=res.data?.pagination?.total||0;
+    document.getElementById('q-count').textContent=`${totalQ} question(s)`;
+    document.getElementById('q-tbody').innerHTML=qs.length?qs.map(q=>`
+      <tr>
+        <td style="max-width:350px"><div class="truncate">${q.question_text}</div></td>
+        <td>${Format.badge(q.question_type)}</td>
+        <td>${Format.badge(q.difficulty)}</td>
+        <td class="text-muted text-sm">${q.subject_name||'—'}</td>
+        <td>${q.marks}</td>
+        <td><span class="badge badge-gray">${q.usage_count||0}x</span></td>
+        <td>
+          <div class="flex gap-1">
+            <button class="btn btn-secondary btn-sm" onclick="editQ('${q.id}')">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteQ('${q.id}')">🗑</button>
+          </div>
+        </td>
+      </tr>`).join(''):`<tr><td colspan="7" class="text-center text-muted" style="padding:40px"><div class="empty-state"><div class="empty-icon">❓</div><h3>No questions yet</h3><button class="btn btn-primary mt-2" onclick="openModal()">Create First Question</button></div></td></tr>`;
+    renderPagination();
+  }catch(err){ Toast.error('Load error: '+err.message); }
+}
+
+function renderPagination(){
+  const totalPages=Math.ceil(totalQ/limit);
+  document.getElementById('q-pagination').innerHTML=Array.from({length:Math.min(totalPages,10)},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="page=${i+1};load()">${i+1}</button>`).join('');
+}
+
+function openModal(id=null){
+  editId=id;
+  document.getElementById('modal-title').textContent=id?'Edit Question':'New Question';
+  if(!id){ document.getElementById('q-text').value=''; document.getElementById('q-marks').value=1; document.getElementById('q-explanation').value=''; }
+  renderOptions();
+  Modal.open('question-modal');
+}
+
+function closeModal(){ Modal.close('question-modal'); editId=null; }
+
+function renderOptions(){
+  const type=document.getElementById('q-type').value;
+  const sa=document.getElementById('model-ans-section');
+  if(type==='mcq'){
+    sa.classList.add('hidden');
+    document.getElementById('options-section').innerHTML=`
+      <div class="form-group">
+        <div class="flex-between mb-1"><label class="form-label">Options (select correct answer) *</label><button type="button" class="btn btn-secondary btn-sm" onclick="addOption()">+ Add Option</button></div>
+        <div id="mcq-opts">
+          ${['A','B','C','D'].map(k=>`<div class="flex gap-1 mb-2" id="opt-row-${k}"><input class="form-control" id="opt-text-${k}" placeholder="Option ${k}"><label style="display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--text2)"><input type="radio" name="correct-opt" value="${k}" id="opt-correct-${k}"> Correct</label></div>`).join('')}
+        </div>
+      </div>`;
+  } else if(type==='true_false'){
+    sa.classList.add('hidden');
+    document.getElementById('options-section').innerHTML=`<div class="form-group"><label class="form-label">Correct Answer *</label><select id="tf-correct" class="form-control"><option value="true">True</option><option value="false">False</option></select></div>`;
+  } else {
+    sa.classList.remove('hidden');
+    document.getElementById('options-section').innerHTML='';
+  }
+}
+
+function addOption(){
+  const wrap=document.getElementById('mcq-opts');
+  const count=wrap.children.length;
+  const k=String.fromCharCode(65+count);
+  const div=document.createElement('div');
+  div.className='flex gap-1 mb-2';
+  div.innerHTML=`<input class="form-control" id="opt-text-${k}" placeholder="Option ${k}"><label style="display:flex;align-items:center;gap:6px;white-space:nowrap;color:var(--text2)"><input type="radio" name="correct-opt" value="${k}"> Correct</label>`;
+  wrap.appendChild(div);
+}
+
+async function saveQuestion(){
+  const type=document.getElementById('q-type').value;
+  const text=document.getElementById('q-text').value.trim();
+  const subjectId=document.getElementById('q-subject').value;
+  if(!text||!subjectId){ Toast.warning('Question text and subject are required'); return; }
+
+  let correctAnswer='', options=[];
+  if(type==='mcq'){
+    const keys=['A','B','C','D','E','F'];
+    const corr=document.querySelector('input[name="correct-opt"]:checked');
+    if(!corr){ Toast.warning('Select the correct answer'); return; }
+    correctAnswer=corr.value;
+    options=keys.filter(k=>document.getElementById('opt-text-'+k)?.value.trim()).map(k=>({key:k,text:document.getElementById('opt-text-'+k).value.trim(),isCorrect:k===correctAnswer}));
+    if(options.length<2){ Toast.warning('MCQ requires at least 2 options'); return; }
+  } else if(type==='true_false'){
+    correctAnswer=document.getElementById('tf-correct').value;
+  } else {
+    correctAnswer='manual_review';
+  }
+
+  const payload={questionText:text,questionType:type,difficulty:document.getElementById('q-diff').value,subjectId,marks:parseFloat(document.getElementById('q-marks').value)||1,explanation:document.getElementById('q-explanation').value,correctAnswer,modelAnswer:document.getElementById('q-model-ans')?.value||'',options};
+
+  const btn=document.getElementById('save-q-btn');
+  Loading.show(btn,'Saving...');
+  try{
+    if(editId) await api.put('/questions/'+editId,payload);
+    else await api.post('/questions',payload);
+    closeModal(); Toast.success('Question saved!'); load();
+  }catch(err){ Toast.error(err.message); }
+  finally{ Loading.hide(btn); }
+}
+
+async function deleteQ(id){
+  const ok=await Modal.confirm('Delete this question? This cannot be undone.');
+  if(!ok) return;
+  try{ await api.delete('/questions/'+id); Toast.success('Question deleted'); load(); }
+  catch(err){ Toast.error(err.message); }
+}
+
+async function editQ(id){
+  try{
+    const res=await api.get('/questions/'+id);
+    const q=res.data;
+    document.getElementById('q-text').value=q.question_text;
+    document.getElementById('q-type').value=q.question_type;
+    document.getElementById('q-diff').value=q.difficulty;
+    document.getElementById('q-subject').value=q.subject_id;
+    document.getElementById('q-marks').value=q.marks;
+    document.getElementById('q-explanation').value=q.explanation||'';
+    renderOptions();
+    openModal(id);
+    if(q.question_type==='mcq'&&q.options){
+      q.options.forEach(o=>{
+        const ti=document.getElementById('opt-text-'+o.key);
+        if(ti) ti.value=o.text;
+        if(o.isCorrect){ const ri=document.getElementById('opt-correct-'+o.key); if(ri) ri.checked=true; }
+      });
+    }
+    if(q.question_type==='true_false'){ const el=document.getElementById('tf-correct'); if(el) el.value=q.correct_answer; }
+    if(q.model_answer){ const el=document.getElementById('q-model-ans'); if(el) el.value=q.model_answer; }
+  }catch(err){ Toast.error('Failed to load question'); }
+}
+
+loadSubjects().then(load);
+</script>
+</body>
+</html>

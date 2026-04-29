@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Dashboard — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem">📚</div>
+    <span style="font-weight:700;font-size:1.1rem">OES</span>
+    <span class="badge badge-primary" style="margin-left:4px">Student</span>
+  </div>
+  <div class="nav-links" id="nav-links">
+    <a class="nav-link active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="exams.html">📝 My Exams</a>
+    <a class="nav-link" href="results.html">📊 Results</a>
+    <a class="nav-link" href="notifications.html">🔔 Notifications <span id="notif-badge" class="badge badge-danger hidden" style="font-size:.7rem;padding:2px 6px">0</span></a>
+  </div>
+  <div class="nav-user">
+    <button class="btn-icon" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">U</div>
+      <div class="dropdown-menu">
+        <div style="padding:12px;border-bottom:1px solid var(--border)">
+          <div style="font-weight:600" id="nav-user-name">Student</div>
+          <div class="text-muted text-xs" id="nav-user-role">student</div>
+        </div>
+        <a class="dropdown-item" href="profile.html">👤 Profile</a>
+        <a class="dropdown-item" href="notifications.html">🔔 Notifications</a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">Main</div>
+    <a class="sidebar-item active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="exams.html">📝 Available Exams</a>
+    <a class="sidebar-item" href="results.html">📊 My Results</a>
+    <div class="sidebar-section">Account</div>
+    <a class="sidebar-item" href="profile.html">👤 Profile Settings</a>
+    <a class="sidebar-item" href="notifications.html">🔔 Notifications</a>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+    <!-- Header -->
+    <div class="flex-between mb-3">
+      <div>
+        <h1 id="greeting">Good morning! 👋</h1>
+        <p class="text-muted text-sm mt-1" id="student-info">Loading your info...</p>
+      </div>
+      <a href="exams.html" class="btn btn-primary">📝 Take Exam</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid-4 mb-3" id="stats-grid">
+      <div class="stat-card"><div class="stat-icon blue">📝</div><div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Exams</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value" id="stat-passed">—</div><div class="stat-label">Passed</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">📊</div><div><div class="stat-value" id="stat-avg">—</div><div class="stat-label">Avg Score</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">🏆</div><div><div class="stat-value" id="stat-best">—</div><div class="stat-label">Best Grade</div></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+      <!-- Upcoming Exams -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>📅 Upcoming Exams</h3><a href="exams.html" class="text-sm text-primary">View all →</a></div>
+        <div id="upcoming-exams"><div class="skeleton" style="height:80px;margin-bottom:8px"></div><div class="skeleton" style="height:80px"></div></div>
+      </div>
+
+      <!-- Recent Results -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>🏅 Recent Results</h3><a href="results.html" class="text-sm text-primary">View all →</a></div>
+        <div id="recent-results"><div class="skeleton" style="height:80px;margin-bottom:8px"></div><div class="skeleton" style="height:80px"></div></div>
+      </div>
+    </div>
+
+    <!-- Performance chart -->
+    <div class="card mb-3">
+      <div class="flex-between mb-3"><h3>📈 Performance Trend</h3><span class="text-muted text-sm">Last 5 exams</span></div>
+      <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+    </div>
+
+    <!-- Notifications -->
+    <div class="card">
+      <div class="flex-between mb-2"><h3>🔔 Recent Notifications</h3><a href="notifications.html" class="text-sm text-primary">View all →</a></div>
+      <div id="recent-notifs"><div class="skeleton" style="height:60px;margin-bottom:8px"></div></div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const user = Auth.requireAuth(['student']);
+if(!user) throw new Error('Not authenticated');
+
+// Greet
+const hour = new Date().getHours();
+document.getElementById('greeting').textContent = (hour<12?'Good morning':hour<18?'Good afternoon':'Good evening') + ', ' + (user.fullName||user.full_name||'Student') + '! 👋';
+document.getElementById('student-info').textContent = `${user.department||''}${user.batch?' · '+user.batch:''}${user.enrollmentNumber?' · '+user.enrollmentNumber:''}`;
+
+// Theme toggle
+function toggleTheme(){
+  const isLight = document.body.classList.toggle('light');
+  localStorage.setItem('oes_theme', isLight?'light':'dark');
+}
+
+let perfChart;
+async function loadDashboard(){
+  try{
+    // Load results
+    const res = await api.get('/results/my?page=1&limit=50');
+    const results = res.data?.results || [];
+    const total = results.length;
+    const passed = results.filter(r=>r.is_passed).length;
+    const scores = results.map(r=>parseFloat(r.percentage)||0);
+    const avg = scores.length ? (scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1) : 0;
+    const grades = results.map(r=>r.grade).filter(Boolean);
+    const gradeOrder = ['A+','A','B+','B','C','D','F'];
+    const best = grades.sort((a,b)=>gradeOrder.indexOf(a)-gradeOrder.indexOf(b))[0] || '—';
+
+    document.getElementById('stat-total').textContent = total;
+    document.getElementById('stat-passed').textContent = passed;
+    document.getElementById('stat-avg').textContent = avg + '%';
+    document.getElementById('stat-best').textContent = best;
+
+    // Recent results
+    const rHtml = results.slice(0,3).map(r=>`
+      <a href="result-detail.html?id=${r.id}" style="display:block;text-decoration:none">
+        <div class="card card-sm" style="margin-bottom:8px;cursor:pointer">
+          <div class="flex-between">
+            <div><div class="fw-medium text-sm">${r.title}</div><div class="text-xs text-muted">${Format.date(r.submitted_at)}</div></div>
+            <div style="text-align:right"><div class="fw-bold" style="color:${r.is_passed?'var(--success)':'var(--danger)'}">${Format.percent(r.percentage)}</div><div>${Format.badge(r.is_passed?'passed':'failed')}</div></div>
+          </div>
+        </div>
+      </a>`).join('') || '<div class="empty-state"><div class="empty-icon">📊</div><p>No results yet</p></div>';
+    document.getElementById('recent-results').innerHTML = rHtml;
+
+    // Chart
+    const last5 = results.slice(0,5).reverse();
+    if(perfChart) perfChart.destroy();
+    perfChart = new Chart(document.getElementById('performanceChart'), {
+      type:'line',
+      data:{
+        labels: last5.map(r=>r.title.slice(0,20)+'...'),
+        datasets:[{label:'Score %',data:last5.map(r=>parseFloat(r.percentage)||0),borderColor:'#667eea',backgroundColor:'rgba(102,126,234,.1)',fill:true,tension:.4,pointBackgroundColor:'#667eea',pointRadius:5}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#a0aec0',callback:v=>v+'%'}},x:{grid:{display:false},ticks:{color:'#a0aec0',maxRotation:30}}}}
+    });
+  }catch(err){ console.error(err); Toast.error('Failed to load results'); }
+
+  // Upcoming exams
+  try{
+    const res = await api.get('/exams?status=scheduled&limit=5');
+    const exams = res.data?.data || [];
+    const eHtml = exams.slice(0,3).map(e=>`
+      <div class="card card-sm" style="margin-bottom:8px">
+        <div class="flex-between">
+          <div><div class="fw-medium text-sm">${e.title}</div><div class="text-xs text-muted">📅 ${Format.datetime(e.start_datetime)} · ⏱ ${e.duration_minutes}min</div></div>
+          <a href="exams.html" class="btn btn-primary btn-sm">Take</a>
+        </div>
+      </div>`).join('') || '<div class="empty-state" style="padding:20px"><div class="empty-icon">📅</div><p>No upcoming exams</p></div>';
+    document.getElementById('upcoming-exams').innerHTML = eHtml;
+  }catch{ document.getElementById('upcoming-exams').innerHTML = '<p class="text-muted text-sm">Failed to load</p>'; }
+
+  // Notifications
+  try{
+    const res = await api.get('/notifications?limit=3');
+    const notifs = res.data?.data || [];
+    const nHtml = notifs.map(n=>`
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start" onclick="markRead('${n.id}')">
+        <div style="width:8px;height:8px;border-radius:50%;background:${n.is_read?'var(--border)':'var(--primary)'};margin-top:6px;flex-shrink:0"></div>
+        <div><div class="fw-medium text-sm">${n.title}</div><div class="text-xs text-muted">${n.message.slice(0,80)}... · ${Format.date(n.created_at)}</div></div>
+      </div>`).join('') || '<p class="text-muted text-sm">No notifications</p>';
+    document.getElementById('recent-notifs').innerHTML = nHtml;
+  }catch{}
+}
+
+async function markRead(id){
+  try{ await api.put('/notifications/'+id+'/read'); }catch{}
+}
+
+loadDashboard();
+</script>
+</body>
+</html>

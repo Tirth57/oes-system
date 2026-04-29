@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grade Answers — OES Examiner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div><span style="font-weight:700">OES</span><span class="badge badge-warning">Examiner</span></div>
+  <div class="nav-links"><a class="nav-link" href="dashboard.html">🏠 Dashboard</a><a class="nav-link" href="questions.html">❓ Questions</a><a class="nav-link" href="exams.html">📋 Exams</a><a class="nav-link active" href="evaluation.html">📝 Review</a></div>
+  <div class="nav-user"><div class="dropdown"><div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">E</div><div class="dropdown-menu"><div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div></div><button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button></div></div></div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Examination</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="questions.html">❓ Question Bank</a>
+    <a class="sidebar-item" href="exams.html">📋 Manage Exams</a>
+    <a class="sidebar-item active" href="evaluation.html">📝 Pending Reviews</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>Pending Reviews ⏳</h1><p class="text-muted text-sm mt-1">Grade short answer questions submitted by students</p></div>
+      <div class="flex gap-2">
+        <span id="pending-count" class="badge badge-warning" style="font-size:.9rem;padding:8px 14px">Loading...</span>
+      </div>
+    </div>
+
+    <div id="reviews-list"></div>
+    <div class="pagination mt-3" id="pagination"></div>
+  </main>
+</div>
+
+<!-- Grade Modal -->
+<div class="modal-overlay" id="grade-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><div class="modal-title">📝 Grade Answer</div><button class="modal-close" onclick="Modal.close('grade-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="card card-sm mb-3" style="background:var(--bg2)">
+        <div class="text-xs text-muted mb-1 fw-bold">QUESTION</div>
+        <div id="g-question" class="fw-medium"></div>
+        <div class="text-xs text-muted mt-1" id="g-max-marks"></div>
+      </div>
+      <div class="card card-sm mb-3">
+        <div class="text-xs text-muted mb-1 fw-bold">MODEL ANSWER</div>
+        <div id="g-model" class="text-sm" style="line-height:1.6;color:var(--text2)"></div>
+      </div>
+      <div class="card card-sm mb-3" style="border-color:var(--primary)">
+        <div class="text-xs text-muted mb-1 fw-bold">STUDENT'S ANSWER</div>
+        <div id="g-student-ans" class="text-sm" style="line-height:1.6"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group"><label class="form-label">Marks Awarded *</label><input type="number" id="g-marks" class="form-control" min="0" step="0.5" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Max Marks</label><input type="text" id="g-maxm" class="form-control" disabled></div>
+      </div>
+      <div class="form-group"><label class="form-label">Review Notes (Optional)</label><textarea id="g-notes" class="form-control" rows="2" placeholder="Feedback for the student..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger btn-sm" onclick="submitGrade(0)">Give 0</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-secondary" onclick="Modal.close('grade-modal')">Cancel</button>
+      <button class="btn btn-primary" id="grade-btn" onclick="submitGrade()">✅ Submit Grade</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['examiner','administrator']);
+let page=1,limit=10,total=0,currentAnswerId=null,currentMaxMarks=0;
+
+async function load(){
+  try{
+    const res=await api.get('/evaluation/pending?page='+page+'&limit='+limit);
+    const reviews=res.data?.data||[];
+    total=res.data?.pagination?.total||0;
+    document.getElementById('pending-count').textContent=total+' Pending';
+
+    document.getElementById('reviews-list').innerHTML=reviews.length?reviews.map(r=>`
+      <div class="card mb-2 fade-in">
+        <div class="flex-between">
+          <div style="flex:1">
+            <div class="flex gap-2 mb-1">
+              <div class="avatar" style="width:32px;height:32px;font-size:.8rem">${r.student_name[0]}</div>
+              <div><div class="fw-medium">${r.student_name}</div><div class="text-xs text-muted">${r.enrollment_number||''} · ${r.exam_title}</div></div>
+            </div>
+            <div class="card card-sm mt-2" style="background:var(--bg2)">
+              <div class="text-xs text-muted mb-1">Question (${r.marks} marks):</div>
+              <div class="text-sm">${r.question_text}</div>
+            </div>
+            <div class="card card-sm mt-1" style="border-color:var(--primary)">
+              <div class="text-xs text-muted mb-1">Student's Answer:</div>
+              <div class="text-sm">${r.answer_text||'<em class="text-muted">No answer provided</em>'}</div>
+            </div>
+          </div>
+          <div style="margin-left:16px;flex-shrink:0">
+            <button class="btn btn-primary" onclick="openGrade('${r.answer_id}','${r.question_text.replace(/'/g,"\\'")}','${r.model_answer?.replace(/'/g,"\\'")||'N/A'}','${r.answer_text?.replace(/'/g,"\\'")||''}',${r.marks})">📝 Grade</button>
+          </div>
+        </div>
+      </div>`).join(''):`<div class="empty-state"><div class="empty-icon">✅</div><h3>All caught up!</h3><p>No pending reviews at this time.</p></div>`;
+
+    const pages=Math.ceil(total/limit);
+    document.getElementById('pagination').innerHTML=pages>1?Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="page=${i+1};load()">${i+1}</button>`).join(''):'';
+  }catch(err){ Toast.error('Load error: '+err.message); }
+}
+
+function openGrade(answerId,question,model,studentAns,maxMarks){
+  currentAnswerId=answerId; currentMaxMarks=parseFloat(maxMarks);
+  document.getElementById('g-question').textContent=question;
+  document.getElementById('g-max-marks').textContent='Max marks: '+maxMarks;
+  document.getElementById('g-model').textContent=model||'No model answer provided';
+  document.getElementById('g-student-ans').textContent=studentAns||'No answer';
+  document.getElementById('g-marks').max=maxMarks;
+  document.getElementById('g-marks').value='';
+  document.getElementById('g-maxm').value=maxMarks;
+  document.getElementById('g-notes').value='';
+  Modal.open('grade-modal');
+}
+
+async function submitGrade(forcedMarks){
+  const marks=forcedMarks!==undefined?forcedMarks:parseFloat(document.getElementById('g-marks').value);
+  if(isNaN(marks)||marks<0||marks>currentMaxMarks){ Toast.warning('Enter valid marks (0 to '+currentMaxMarks+')'); return; }
+  const notes=document.getElementById('g-notes').value;
+  const btn=document.getElementById('grade-btn');
+  Loading.show(btn,'Saving...');
+  try{
+    await api.put('/evaluation/answers/'+currentAnswerId+'/grade',{marksObtained:marks,reviewNotes:notes});
+    Modal.close('grade-modal');
+    Toast.success('Answer graded successfully!');
+    load();
+  }catch(err){ Toast.error(err.message); }
+  finally{ Loading.hide(btn); }
+}
+
+load();
+</script>
+</body>
+</html>

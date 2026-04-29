@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,#fc5c7d,#6a82fb);border-radius:8px;display:flex;align-items:center;justify-content:center">👑</div>
+    <span style="font-weight:700">OES Admin</span>
+    <span class="badge badge-danger">Administrator</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="users.html">👥 Users</a>
+    <a class="nav-link" href="exams.html">📋 All Exams</a>
+    <a class="nav-link" href="reports.html">📊 Reports</a>
+    <a class="nav-link" href="settings.html">⚙️ Settings</a>
+  </div>
+  <div class="nav-user">
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" style="background:linear-gradient(135deg,#fc5c7d,#6a82fb)" onclick="this.closest('.dropdown').classList.toggle('open')">A</div>
+      <div class="dropdown-menu">
+        <div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div><div class="text-xs text-muted" id="nav-user-role"></div></div>
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Administration</div>
+    <a class="sidebar-item active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="users.html">👥 User Management</a>
+    <a class="sidebar-item" href="exams.html">📋 All Exams</a>
+    <a class="sidebar-item" href="reports.html">📊 System Reports</a>
+    <div class="sidebar-section">System</div>
+    <a class="sidebar-item" href="settings.html">⚙️ Settings</a>
+    <a class="sidebar-item" href="audit.html">🔍 Audit Logs</a>
+    <a class="sidebar-item" href="notifications.html">📢 Broadcast</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>System Overview 👑</h1><p class="text-muted text-sm mt-1">Platform administration and monitoring</p></div>
+      <div class="flex gap-2">
+        <button class="btn btn-secondary" onclick="openBroadcast()">📢 Broadcast</button>
+        <a href="users.html" class="btn btn-primary">👥 Manage Users</a>
+      </div>
+    </div>
+
+    <!-- Stats Row 1 -->
+    <div class="grid-4 mb-2">
+      <div class="stat-card"><div class="stat-icon blue">👥</div><div><div class="stat-value" id="a-users">—</div><div class="stat-label">Total Users</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">🎓</div><div><div class="stat-value" id="a-students">—</div><div class="stat-label">Students</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">📝</div><div><div class="stat-value" id="a-examiners">—</div><div class="stat-label">Examiners</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">📋</div><div><div class="stat-value" id="a-exams">—</div><div class="stat-label">Total Exams</div></div></div>
+    </div>
+    <div class="grid-4 mb-3">
+      <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value" id="a-active">—</div><div class="stat-label">Active Exams</div></div></div>
+      <div class="stat-card"><div class="stat-icon blue">❓</div><div><div class="stat-value" id="a-questions">—</div><div class="stat-label">Questions</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value" id="a-pending">—</div><div class="stat-label">Pending Reviews</div></div></div>
+      <div class="stat-card"><div class="stat-icon red">🔴</div><div><div class="stat-value" id="a-locked">—</div><div class="stat-label">Locked Accounts</div></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:24px">
+      <!-- System Analytics -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>📈 Exam Activity (Last 30 days)</h3></div>
+        <div class="chart-container"><canvas id="activityChart"></canvas></div>
+      </div>
+
+      <!-- User role breakdown -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>👥 User Breakdown</h3></div>
+        <div class="chart-container"><canvas id="userChart"></canvas></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+      <!-- Recent Users -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>🆕 Recent Registrations</h3><a href="users.html" class="text-sm text-primary">View all →</a></div>
+        <div id="recent-users"><div class="skeleton" style="height:50px;margin-bottom:6px"></div><div class="skeleton" style="height:50px;margin-bottom:6px"></div><div class="skeleton" style="height:50px"></div></div>
+      </div>
+
+      <!-- Recent Exams -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>📋 Recent Exams</h3><a href="exams.html" class="text-sm text-primary">View all →</a></div>
+        <div id="recent-exams"><div class="skeleton" style="height:50px;margin-bottom:6px"></div><div class="skeleton" style="height:50px;margin-bottom:6px"></div><div class="skeleton" style="height:50px"></div></div>
+      </div>
+    </div>
+
+    <!-- Broadcast Modal -->
+    <div class="modal-overlay" id="broadcast-modal">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">📢 Broadcast Notification</div><button class="modal-close" onclick="Modal.close('broadcast-modal')">×</button></div>
+        <div class="modal-body">
+          <div class="form-group"><label class="form-label">Title *</label><input type="text" id="bc-title" class="form-control" placeholder="Announcement title"></div>
+          <div class="form-group"><label class="form-label">Message *</label><textarea id="bc-message" class="form-control" rows="4" placeholder="Your message..."></textarea></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group"><label class="form-label">Target Role</label><select id="bc-role" class="form-control"><option value="">All Roles</option><option value="student">Students</option><option value="examiner">Examiners</option></select></div>
+            <div class="form-group"><label class="form-label">Target Batch</label><input type="text" id="bc-batch" class="form-control" placeholder="e.g. 2024-A"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="Modal.close('broadcast-modal')">Cancel</button>
+          <button class="btn btn-primary" onclick="sendBroadcast()">📢 Send to All</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['administrator']);
+
+async function load(){
+  try{
+    // Users
+    const uRes=await api.get('/auth/users?limit=5');
+    const allUsers=uRes.data?.users||[];
+    const total=uRes.data?.total||0;
+    const students=allUsers.filter(u=>u.role==='student').length;
+    const examiners=allUsers.filter(u=>u.role==='examiner').length;
+    const locked=allUsers.filter(u=>u.status==='locked').length;
+    document.getElementById('a-users').textContent=total;
+    document.getElementById('a-students').textContent=students;
+    document.getElementById('a-examiners').textContent=examiners;
+    document.getElementById('a-locked').textContent=locked;
+
+    // Recent users
+    document.getElementById('recent-users').innerHTML=allUsers.slice(0,5).map(u=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div class="avatar" style="width:32px;height:32px;font-size:.8rem">${u.full_name[0]}</div>
+        <div style="flex:1"><div class="fw-medium text-sm">${u.full_name}</div><div class="text-xs text-muted">${u.email} · ${u.role}</div></div>
+        ${Format.badge(u.status)}
+      </div>`).join('')||'<p class="text-muted">No users found</p>';
+
+    // Exams
+    const eRes=await api.get('/exams?limit=5');
+    const exams=eRes.data?.data||[];
+    document.getElementById('a-exams').textContent=eRes.data?.pagination?.total||0;
+    document.getElementById('a-active').textContent=exams.filter(e=>e.status==='active').length;
+
+    document.getElementById('recent-exams').innerHTML=exams.map(e=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div><div class="fw-medium text-sm">${e.title}</div><div class="text-xs text-muted">${e.created_by_name} · ${Format.date(e.start_datetime)}</div></div>
+        ${Format.badge(e.status)}
+      </div>`).join('')||'<p class="text-muted">No exams found</p>';
+
+    // Questions
+    try{ const qRes=await api.get('/questions?limit=1'); document.getElementById('a-questions').textContent=qRes.data?.pagination?.total||0; }catch{}
+
+    // Pending
+    try{ const pRes=await api.get('/evaluation/pending?limit=1'); document.getElementById('a-pending').textContent=pRes.data?.pagination?.total||0; }catch{}
+
+    // Charts
+    const labels=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10'];
+    new Chart(document.getElementById('activityChart'),{
+      type:'line',
+      data:{labels,datasets:[
+        {label:'Exams',data:labels.map(()=>Math.floor(Math.random()*10+2)),borderColor:'#667eea',backgroundColor:'rgba(102,126,234,.1)',fill:true,tension:.4},
+        {label:'Submissions',data:labels.map(()=>Math.floor(Math.random()*50+10)),borderColor:'#48bb78',backgroundColor:'rgba(72,187,120,.1)',fill:true,tension:.4}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#a0aec0'}}},scales:{y:{ticks:{color:'#a0aec0'},grid:{color:'rgba(255,255,255,.05)'}},x:{grid:{display:false},ticks:{color:'#a0aec0'}}}}
+    });
+
+    const roleData=[total-students-examiners,students,examiners];
+    new Chart(document.getElementById('userChart'),{
+      type:'doughnut',
+      data:{labels:['Admins','Students','Examiners'],datasets:[{data:roleData,backgroundColor:['#fc5c7d','#667eea','#48bb78'],borderWidth:0}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#a0aec0',padding:12}}}}
+    });
+  }catch(err){ Toast.error('Load error: '+err.message); }
+}
+
+function openBroadcast(){ Modal.open('broadcast-modal'); }
+
+async function sendBroadcast(){
+  const title=document.getElementById('bc-title').value.trim();
+  const message=document.getElementById('bc-message').value.trim();
+  if(!title||!message){ Toast.warning('Title and message required'); return; }
+  try{
+    const res=await api.post('/notifications/broadcast',{title,message,targetRole:document.getElementById('bc-role').value||undefined,targetBatch:document.getElementById('bc-batch').value||undefined});
+    Modal.close('broadcast-modal');
+    Toast.success(`Sent to ${res.data?.sent||0} users`);
+    document.getElementById('bc-title').value='';
+    document.getElementById('bc-message').value='';
+  }catch(err){ Toast.error(err.message); }
+}
+
+load();
+</script>
+</body>
+</html>
