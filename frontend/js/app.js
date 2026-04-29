@@ -1,5 +1,5 @@
 // ─── API Client ───────────────────────────────────────────────
-const API_BASE = '/api';
+const API_BASE = 'https://oes-backend-api.onrender.com/api';
 
 const api = {
   async request(method, path, body, isFormData = false) {
