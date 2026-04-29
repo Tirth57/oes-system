@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manage Exams — OES Examiner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div><span style="font-weight:700">OES</span><span class="badge badge-warning">Examiner</span></div>
+  <div class="nav-links"><a class="nav-link" href="dashboard.html">🏠 Dashboard</a><a class="nav-link" href="questions.html">❓ Questions</a><a class="nav-link active" href="exams.html">📋 Exams</a><a class="nav-link" href="evaluation.html">📝 Review</a></div>
+  <div class="nav-user"><div class="dropdown"><div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">E</div><div class="dropdown-menu"><div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div></div><button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button></div></div></div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Examination</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="questions.html">❓ Question Bank</a>
+    <a class="sidebar-item active" href="exams.html">📋 Manage Exams</a>
+    <a class="sidebar-item" href="evaluation.html">📝 Pending Reviews</a>
+    <a class="sidebar-item" href="reports.html">📊 Reports</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>Manage Exams 📋</h1><p class="text-muted text-sm mt-1">Create and manage your examinations</p></div>
+      <button class="btn btn-primary" onclick="Modal.open('create-exam-modal')">+ New Exam</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3" style="padding:16px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input type="text" id="search" class="form-control" placeholder="Search exams..." oninput="load()" style="padding-left:36px"></div>
+        <select id="f-status" class="form-control" style="width:160px" onchange="load()"><option value="">All Status</option><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="active">Active</option><option value="completed">Completed</option></select>
+      </div>
+    </div>
+
+    <!-- Exams list -->
+    <div id="exams-list"></div>
+    <div class="pagination mt-3" id="pagination"></div>
+  </main>
+</div>
+
+<!-- Create Exam Modal -->
+<div class="modal-overlay" id="create-exam-modal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header"><div class="modal-title">📋 Create New Exam</div><button class="modal-close" onclick="Modal.close('create-exam-modal')">×</button></div>
+    <div class="modal-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Exam Title *</label><input type="text" id="e-title" class="form-control" placeholder="e.g. Mid-Semester Exam - Data Structures"></div>
+        <div class="form-group"><label class="form-label">Subject *</label><select id="e-subject" class="form-control"><option value="">Select Subject</option></select></div>
+        <div class="form-group"><label class="form-label">Duration (minutes) *</label><input type="number" id="e-duration" class="form-control" value="60" min="5"></div>
+        <div class="form-group"><label class="form-label">Start Date & Time *</label><input type="datetime-local" id="e-start" class="form-control"></div>
+        <div class="form-group"><label class="form-label">End Date & Time *</label><input type="datetime-local" id="e-end" class="form-control"></div>
+        <div class="form-group"><label class="form-label">Total Marks *</label><input type="number" id="e-marks" class="form-control" value="100" min="1"></div>
+        <div class="form-group"><label class="form-label">Pass Marks *</label><input type="number" id="e-pass" class="form-control" value="40" min="0"></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Instructions</label><textarea id="e-instructions" class="form-control" rows="2" placeholder="Instructions for students..."></textarea></div>
+        <div class="form-group" style="grid-column:1/-1"><label class="form-label">Description</label><textarea id="e-desc" class="form-control" rows="2" placeholder="Exam description..."></textarea></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-group"><label class="form-label fw-bold">Question Selection</label><div style="display:flex;gap:12px"><label style="display:flex;align-items:center;gap:6px"><input type="radio" name="qtype" value="manual" checked onchange="showQSelect('manual')">Manual from bank</label><label style="display:flex;align-items:center;gap:6px"><input type="radio" name="qtype" value="random" onchange="showQSelect('random')">Random by criteria</label></div></div>
+      <div id="manual-q-select">
+        <div class="form-group"><label class="form-label">Select Questions</label><div id="q-checklist" style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:12px">Loading questions...</div></div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e-shuffle-q"> Shuffle Questions</label>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e-shuffle-o"> Shuffle Options</label>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e-neg"> Negative Marking</label>
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e-publish" checked> Publish Immediately</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('create-exam-modal')">Cancel</button>
+      <button class="btn btn-primary" id="create-exam-btn" onclick="createExam()">Create Exam</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['examiner','administrator']);
+let page=1,limit=10,total=0,allQuestions=[],subjects=[];
+const selectedQs=new Set();
+
+async function init(){
+  try{
+    const sRes=await api.get('/questions/subjects');
+    subjects=sRes.data||[];
+    const opts=subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    document.getElementById('e-subject').innerHTML='<option value="">Select Subject</option>'+opts;
+    const qRes=await api.get('/questions?limit=200');
+    allQuestions=qRes.data?.data||[];
+    renderQChecklist();
+  }catch{}
+  load();
+}
+
+function renderQChecklist(){
+  document.getElementById('q-checklist').innerHTML=allQuestions.length?allQuestions.map(q=>`
+    <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;cursor:pointer">
+      <input type="checkbox" value="${q.id}" style="margin-top:3px" onchange="toggleQ('${q.id}',this.checked)">
+      <div><div class="text-sm fw-medium">${q.question_text.slice(0,80)}...</div><div class="text-xs text-muted">${Format.badge(q.question_type)} ${Format.badge(q.difficulty)} · ${q.marks} mark(s)</div></div>
+    </label>`).join(''):'<p class="text-muted">No questions available. Create questions first.</p>';
+}
+
+function toggleQ(id,checked){ checked?selectedQs.add(id):selectedQs.delete(id); }
+
+function showQSelect(type){
+  document.getElementById('manual-q-select').style.display=type==='manual'?'block':'none';
+}
+
+async function createExam(){
+  const title=document.getElementById('e-title').value.trim();
+  const subjectId=document.getElementById('e-subject').value;
+  const start=document.getElementById('e-start').value;
+  const end=document.getElementById('e-end').value;
+  const duration=parseInt(document.getElementById('e-duration').value);
+  const marks=parseFloat(document.getElementById('e-marks').value);
+  const pass=parseFloat(document.getElementById('e-pass').value);
+  const qtype=document.querySelector('input[name="qtype"]:checked').value;
+
+  if(!title||!subjectId||!start||!end){ Toast.warning('Fill all required fields'); return; }
+  if(new Date(start)<=new Date()){ Toast.warning('Start time must be in the future'); return; }
+  if(new Date(end)<=new Date(start)){ Toast.warning('End time must be after start'); return; }
+  if(qtype==='manual'&&selectedQs.size===0){ Toast.warning('Select at least one question'); return; }
+
+  const payload={title,subjectId,startDatetime:new Date(start).toISOString(),endDatetime:new Date(end).toISOString(),durationMinutes:duration,totalMarks:marks,passMarks:pass,description:document.getElementById('e-desc').value,instructions:document.getElementById('e-instructions').value,questionSelectionType:qtype,questions:[...selectedQs],shuffleQuestions:document.getElementById('e-shuffle-q').checked,shuffleOptions:document.getElementById('e-shuffle-o').checked,negativeMarking:document.getElementById('e-neg').checked};
+
+  const btn=document.getElementById('create-exam-btn');
+  Loading.show(btn,'Creating...');
+  try{
+    const res=await api.post('/exams',payload);
+    if(document.getElementById('e-publish').checked){
+      await api.post('/exams/'+res.data.id+'/publish',{});
+    }
+    Modal.close('create-exam-modal');
+    Toast.success('Exam created!');
+    selectedQs.clear(); load();
+  }catch(err){ Toast.error(err.message); }
+  finally{ Loading.hide(btn); }
+}
+
+async function load(){
+  const search=document.getElementById('search').value;
+  const status=document.getElementById('f-status').value;
+  const params=new URLSearchParams({page,limit});
+  if(search) params.append('search',search);
+  if(status) params.append('status',status);
+  try{
+    const res=await api.get('/exams?'+params);
+    const exams=res.data?.data||[];
+    total=res.data?.pagination?.total||0;
+    document.getElementById('exams-list').innerHTML=exams.length?exams.map(e=>`
+      <div class="card mb-2 fade-in">
+        <div class="flex-between">
+          <div style="flex:1">
+            <div class="flex gap-2 mb-1">${Format.badge(e.status)}<h3 style="margin:0">${e.title}</h3></div>
+            <div style="display:flex;gap:16px;font-size:.83rem;color:var(--text2);flex-wrap:wrap">
+              <span>📚 ${e.subject_name||'—'}</span>
+              <span>📅 ${Format.datetime(e.start_datetime)}</span>
+              <span>⏱ ${e.duration_minutes}min</span>
+              <span>🎯 ${e.total_marks} marks</span>
+              <span>❓ ${e.question_count||0} questions</span>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            ${e.status==='draft'?`<button class="btn btn-primary btn-sm" onclick="publish('${e.id}')">📢 Publish</button>`:''}
+            ${e.status==='completed'?`<a href="reports.html?examId=${e.id}" class="btn btn-secondary btn-sm">📊 Report</a>`:''}
+            ${['completed','active'].includes(e.status)?`<button class="btn btn-outline btn-sm" onclick="viewResults('${e.id}')">👥 Results</button>`:''}
+            ${e.status==='scheduled'?`<button class="btn btn-danger btn-sm" onclick="cancelExam('${e.id}')">✖ Cancel</button>`:''}
+          </div>
+        </div>
+      </div>`).join(''):`<div class="empty-state"><div class="empty-icon">📋</div><h3>No exams found</h3><button class="btn btn-primary mt-2" onclick="Modal.open('create-exam-modal')">Create First Exam</button></div>`;
+    renderPagination();
+  }catch(err){ Toast.error(err.message); }
+}
+
+function renderPagination(){
+  const pages=Math.ceil(total/limit);
+  document.getElementById('pagination').innerHTML=pages>1?Array.from({length:pages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="page=${i+1};load()">${i+1}</button>`).join(''):'';
+}
+
+async function publish(id){
+  const ok=await Modal.confirm('Publish this exam? Students will be notified.','Publish Exam');
+  if(!ok) return;
+  try{ await api.post('/exams/'+id+'/publish',{}); Toast.success('Exam published!'); load(); }
+  catch(err){ Toast.error(err.message); }
+}
+
+async function cancelExam(id){
+  const ok=await Modal.confirm('Cancel this exam? This cannot be undone.','Cancel Exam');
+  if(!ok) return;
+  try{ await api.post('/exams/'+id+'/cancel',{}); Toast.success('Exam cancelled'); load(); }
+  catch(err){ Toast.error(err.message); }
+}
+
+function viewResults(id){ window.location.href='reports.html?examId='+id; }
+
+init();
+</script>
+</body>
+</html>

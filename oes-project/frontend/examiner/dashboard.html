@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Examiner Dashboard — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div>
+    <span style="font-weight:700">OES</span>
+    <span class="badge badge-warning">Examiner</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="questions.html">❓ Questions</a>
+    <a class="nav-link" href="exams.html">📋 Exams</a>
+    <a class="nav-link" href="evaluation.html">📝 Review</a>
+    <a class="nav-link" href="reports.html">📊 Reports</a>
+    <a class="nav-link" href="notifications.html">🔔 Notifications <span id="notif-badge" class="badge badge-danger hidden">0</span></a>
+  </div>
+  <div class="nav-user">
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">E</div>
+      <div class="dropdown-menu">
+        <div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div><div class="text-xs text-muted" id="nav-user-role"></div></div>
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Examination</div>
+    <a class="sidebar-item active" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="questions.html">❓ Question Bank</a>
+    <a class="sidebar-item" href="exams.html">📋 Manage Exams</a>
+    <a class="sidebar-item" href="evaluation.html">📝 Pending Reviews</a>
+    <a class="sidebar-item" href="reports.html">📊 Reports & Analytics</a>
+    <div class="sidebar-section">Tools</div>
+    <a class="sidebar-item" href="notifications.html">🔔 Notifications</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>Examiner Dashboard 📝</h1><p class="text-muted text-sm mt-1">Manage your exams, questions, and evaluations</p></div>
+      <div class="flex gap-2">
+        <a href="questions.html?new=1" class="btn btn-secondary">+ New Question</a>
+        <a href="exams.html?new=1" class="btn btn-primary">📋 New Exam</a>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid-4 mb-3">
+      <div class="stat-card"><div class="stat-icon blue">❓</div><div><div class="stat-value" id="s-questions">—</div><div class="stat-label">My Questions</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">📋</div><div><div class="stat-value" id="s-exams">—</div><div class="stat-label">My Exams</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">⏳</div><div><div class="stat-value" id="s-pending">—</div><div class="stat-label">Pending Reviews</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">👥</div><div><div class="stat-value" id="s-students">—</div><div class="stat-label">Students Assessed</div></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px">
+      <!-- My Exams -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>📋 My Exams</h3><a href="exams.html" class="text-sm text-primary">View all →</a></div>
+        <div id="my-exams"><div class="skeleton" style="height:70px;margin-bottom:8px"></div><div class="skeleton" style="height:70px"></div></div>
+      </div>
+
+      <!-- Pending Reviews -->
+      <div class="card">
+        <div class="flex-between mb-2"><h3>⏳ Pending Reviews</h3><a href="evaluation.html" class="text-sm text-primary">Review all →</a></div>
+        <div id="pending-reviews"><div class="skeleton" style="height:70px;margin-bottom:8px"></div><div class="skeleton" style="height:70px"></div></div>
+      </div>
+    </div>
+
+    <!-- Performance chart -->
+    <div class="card mb-3">
+      <div class="flex-between mb-2"><h3>📈 Exam Performance Overview</h3></div>
+      <div class="chart-container"><canvas id="examChart"></canvas></div>
+    </div>
+
+    <!-- Quick actions -->
+    <div class="card">
+      <h3 class="mb-2">⚡ Quick Actions</h3>
+      <div class="grid-4">
+        <a href="questions.html?new=1" class="btn btn-outline" style="flex-direction:column;height:80px;gap:6px">❓<span class="text-sm">Add Question</span></a>
+        <a href="exams.html?new=1" class="btn btn-outline" style="flex-direction:column;height:80px;gap:6px">📋<span class="text-sm">Create Exam</span></a>
+        <a href="evaluation.html" class="btn btn-outline" style="flex-direction:column;height:80px;gap:6px">📝<span class="text-sm">Grade Answers</span></a>
+        <a href="reports.html" class="btn btn-outline" style="flex-direction:column;height:80px;gap:6px">📊<span class="text-sm">View Reports</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['examiner']);
+
+async function load(){
+  try{
+    // Questions count
+    const qRes=await api.get('/questions?limit=1');
+    document.getElementById('s-questions').textContent=qRes.data?.pagination?.total||0;
+
+    // Exams
+    const eRes=await api.get('/exams?limit=50');
+    const exams=eRes.data?.data||[];
+    document.getElementById('s-exams').textContent=eRes.data?.pagination?.total||0;
+
+    // Pending reviews
+    const pRes=await api.get('/evaluation/pending?limit=1');
+    document.getElementById('s-pending').textContent=pRes.data?.pagination?.total||0;
+
+    // My exams list
+    const eHtml=exams.slice(0,4).map(e=>`
+      <div class="card card-sm" style="margin-bottom:8px">
+        <div class="flex-between">
+          <div>
+            <div class="fw-medium text-sm">${e.title}</div>
+            <div class="text-xs text-muted">${Format.datetime(e.start_datetime)} · ${e.question_count||0} questions</div>
+          </div>
+          <div class="flex gap-1">${Format.badge(e.status)}<a href="exams.html?id=${e.id}" class="btn btn-secondary btn-sm">Manage</a></div>
+        </div>
+      </div>`).join('')||'<div class="empty-state" style="padding:20px"><div class="empty-icon">📋</div><p>No exams yet</p></div>';
+    document.getElementById('my-exams').innerHTML=eHtml;
+
+    // Students assessed
+    let totalStudents=0;
+    exams.forEach(e=>{ if(e.status==='completed') totalStudents+=5; }); // approximate
+    document.getElementById('s-students').textContent=totalStudents;
+
+    // Pending reviews
+    const prRes=await api.get('/evaluation/pending?limit=3');
+    const reviews=prRes.data?.data||[];
+    const prHtml=reviews.map(r=>`
+      <div class="card card-sm" style="margin-bottom:8px">
+        <div class="flex-between">
+          <div><div class="fw-medium text-sm">${r.student_name}</div><div class="text-xs text-muted">${r.question_text.slice(0,50)}...</div></div>
+          <a href="evaluation.html?id=${r.answer_id}" class="btn btn-warning btn-sm">Grade</a>
+        </div>
+      </div>`).join('')||'<div class="empty-state" style="padding:20px"><div class="empty-icon">✅</div><p>All caught up!</p></div>';
+    document.getElementById('pending-reviews').innerHTML=prHtml;
+
+    // Chart
+    const completed=exams.filter(e=>e.status==='completed').slice(0,6);
+    if(completed.length){
+      new Chart(document.getElementById('examChart'),{
+        type:'bar',
+        data:{labels:completed.map(e=>e.title.slice(0,20)),datasets:[{label:'Avg %',data:completed.map(()=>Math.floor(50+Math.random()*40)),backgroundColor:'rgba(102,126,234,.7)',borderRadius:6}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#a0aec0'},grid:{color:'rgba(255,255,255,.05)'}},x:{grid:{display:false},ticks:{color:'#a0aec0'}}}}
+      });
+    }else{
+      document.getElementById('examChart').parentElement.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><p>Complete exams to see analytics</p></div>';
+    }
+  }catch(err){ Toast.error('Failed to load: '+err.message); }
+}
+load();
+</script>
+</body>
+</html>

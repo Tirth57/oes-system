@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Take Exam — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<style>
+body{overflow:hidden}
+.exam-header{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.exam-layout{display:grid;grid-template-columns:1fr 280px;height:calc(100vh - 65px)}
+.exam-main{overflow-y:auto;padding:24px;background:var(--bg)}
+.exam-sidebar-panel{background:var(--card);border-left:1px solid var(--border);overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.question-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:800px;margin:0 auto}
+.ta-option{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;border:2px solid var(--border);cursor:pointer;transition:var(--transition);margin-bottom:10px}
+.ta-option:hover{border-color:var(--primary)}
+.ta-option.sel{border-color:var(--primary);background:rgba(102,126,234,.08)}
+.ta-option input[type=radio]{accent-color:var(--primary);width:18px;height:18px}
+#submit-btn{background:linear-gradient(135deg,#48bb78,#38a169)}
+.flag-btn{background:none;border:1px solid var(--border);border-radius:6px;padding:6px 12px;cursor:pointer;color:var(--text2);font-size:.85rem;transition:var(--transition)}
+.flag-btn.flagged{background:rgba(237,137,54,.1);border-color:var(--warning);color:var(--warning)}
+.nav-prev,.nav-next{display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<!-- Exam Header -->
+<div class="exam-header">
+  <div class="flex gap-2">
+    <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div>
+    <div>
+      <div class="fw-bold" id="exam-title" style="font-size:.95rem">Loading exam...</div>
+      <div class="text-xs text-muted" id="exam-subject"></div>
+    </div>
+  </div>
+  <div class="flex gap-2">
+    <div class="timer" id="timer">--:--:--</div>
+    <button class="btn btn-success" id="submit-btn" onclick="handleSubmit()">✅ Submit Exam</button>
+  </div>
+</div>
+
+<div class="exam-layout">
+  <!-- Main question area -->
+  <div class="exam-main" id="question-area">
+    <div class="text-center" style="padding:60px">
+      <div class="spinner spinner-lg" style="margin:0 auto 16px"></div>
+      <p class="text-muted">Loading exam...</p>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="exam-sidebar-panel">
+    <div>
+      <div class="text-sm fw-bold mb-1" style="color:var(--text2)">QUESTION NAVIGATOR</div>
+      <div class="q-nav" id="q-nav"></div>
+    </div>
+    <div class="card card-sm" style="font-size:.82rem">
+      <div class="flex gap-1 mb-1"><span class="q-btn answered" style="cursor:default;width:20px;height:20px;font-size:.6rem">✓</span><span class="text-muted"> Answered</span></div>
+      <div class="flex gap-1 mb-1"><span class="q-btn flagged" style="cursor:default;width:20px;height:20px;font-size:.6rem">⚑</span><span class="text-muted"> Flagged</span></div>
+      <div class="flex gap-1"><span class="q-btn" style="cursor:default;width:20px;height:20px;font-size:.6rem"></span><span class="text-muted"> Unanswered</span></div>
+    </div>
+    <div id="sidebar-status" class="card card-sm" style="font-size:.85rem">
+      <div class="flex-between mb-1"><span class="text-muted">Answered</span><span id="s-answered" class="fw-bold text-success">0</span></div>
+      <div class="flex-between mb-1"><span class="text-muted">Unanswered</span><span id="s-unanswered" class="fw-bold text-danger">0</span></div>
+      <div class="flex-between"><span class="text-muted">Flagged</span><span id="s-flagged" class="fw-bold text-warning">0</span></div>
+    </div>
+    <div>
+      <div class="text-xs text-muted mb-1">Answers auto-save every 5s</div>
+      <div class="progress"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const user = Auth.requireAuth(['student']);
+const params = new URLSearchParams(location.search);
+const examId = params.get('id');
+if(!examId){ Toast.error('No exam ID'); window.location.href='exams.html'; }
+
+let exam=null, questions=[], submissionId=null, currentQ=0;
+let answers={}, flags={};
+let timerInterval, autoSaveInterval;
+let tabSwitches=0;
+
+// Anti-cheating: tab switch detection
+document.addEventListener('visibilitychange',async()=>{
+  if(document.hidden && submissionId){
+    tabSwitches++;
+    try{
+      const res=await api.post('/conduct/submissions/'+submissionId+'/tab-switch',{});
+      if(res.data?.autoSubmitted){ Toast.error('Exam auto-submitted: Too many tab switches'); clearIntervals(); location.href='results.html'; }
+      else Toast.warning(`⚠️ Tab switch detected! Warning ${tabSwitches}/${exam?.maxTabSwitches||3}`);
+    }catch{}
+  }
+});
+
+// Prevent right-click
+document.addEventListener('contextmenu',e=>e.preventDefault());
+
+async function initExam(){
+  try{
+    const res = await api.post('/conduct/exams/'+examId+'/start',{});
+    const d = res.data;
+    submissionId = d.submissionId;
+    exam = d.exam;
+    questions = d.questions;
+
+    document.getElementById('exam-title').textContent = exam.title;
+    document.getElementById('exam-subject').textContent = exam.subject;
+
+    // Load saved answers
+    try{
+      const sRes = await api.get('/conduct/submissions/'+submissionId+'/status');
+      (sRes.data?.answers||[]).forEach(a=>{ answers[a.questionId]=answers[a.questionId]||{}; flags[a.questionId]=(a.status==='flagged'); });
+    }catch{}
+
+    renderNav();
+    renderQuestion(0);
+    startTimer(exam.endDatetime);
+    startAutoSave();
+  }catch(err){
+    Toast.error(err.message||'Failed to start exam');
+    document.getElementById('question-area').innerHTML=`<div class="empty-state"><div class="empty-icon">⚠️</div><h3>${err.message}</h3><a href="exams.html" class="btn btn-primary mt-2">Back to Exams</a></div>`;
+  }
+}
+
+function renderNav(){
+  const nav=document.getElementById('q-nav');
+  nav.innerHTML=questions.map((q,i)=>{
+    const ans=answers[q.id];
+    const isAnswered=ans&&(ans.selectedOption||ans.answerText);
+    const isFlagged=flags[q.id];
+    const cls=currentQ===i?'current':isFlagged?'flagged':isAnswered?'answered':'';
+    return `<button class="q-btn ${cls}" onclick="gotoQ(${i})" title="Q${i+1}">${i+1}</button>`;
+  }).join('');
+  updateStatus();
+}
+
+function updateStatus(){
+  let answered=0,flagged=0;
+  questions.forEach(q=>{ if(answers[q.id]&&(answers[q.id].selectedOption||answers[q.id].answerText)) answered++; if(flags[q.id]) flagged++; });
+  document.getElementById('s-answered').textContent=answered;
+  document.getElementById('s-unanswered').textContent=questions.length-answered;
+  document.getElementById('s-flagged').textContent=flagged;
+  document.getElementById('progress-bar').style.width=(questions.length?answered/questions.length*100:0)+'%';
+}
+
+function renderQuestion(idx){
+  currentQ=idx;
+  const q=questions[idx];
+  if(!q) return;
+  const ans=answers[q.id]||{};
+  const isFlagged=flags[q.id]||false;
+
+  let optionsHtml='';
+  if(q.question_type==='mcq'){
+    optionsHtml=(q.options||[]).map(o=>`
+      <label class="ta-option ${ans.selectedOption===o.key?'sel':''}">
+        <input type="radio" name="mcq" value="${o.key}" ${ans.selectedOption===o.key?'checked':''} onchange="selectOption('${q.id}','${o.key}')">
+        <span class="option-key">${o.key}</span>
+        <span style="flex:1">${o.text}</span>
+      </label>`).join('');
+  } else if(q.question_type==='true_false'){
+    optionsHtml=['true','false'].map(v=>`
+      <label class="ta-option ${ans.selectedOption===v?'sel':''}">
+        <input type="radio" name="tf" value="${v}" ${ans.selectedOption===v?'checked':''} onchange="selectOption('${q.id}','${v}')">
+        <span>${v==='true'?'✅ True':'❌ False'}</span>
+      </label>`).join('');
+  } else {
+    optionsHtml=`<div class="form-group">
+      <label class="form-label">Your Answer:</label>
+      <textarea class="form-control" id="short-ans" rows="5" placeholder="Write your answer here..." oninput="saveShort('${q.id}',this.value)">${ans.answerText||''}</textarea>
+    </div>`;
+  }
+
+  document.getElementById('question-area').innerHTML=`
+    <div class="question-card fade-in">
+      <div class="flex-between mb-3">
+        <div class="question-num">Question ${idx+1} of ${questions.length} · ${Format.badge(q.question_type)} · ${Format.badge(q.difficulty)} · ${q.marks} marks</div>
+        <button class="flag-btn ${isFlagged?'flagged':''}" onclick="toggleFlag('${q.id}')">⚑ ${isFlagged?'Flagged':'Flag'}</button>
+      </div>
+      ${q.image_url?`<img src="${q.image_url}" style="max-height:200px;border-radius:8px;margin-bottom:16px" alt="Question image">`:''}
+      <div class="question-text">${q.question_text}</div>
+      <div id="options-wrap">${optionsHtml}</div>
+      <div class="flex-between mt-3">
+        <button class="btn btn-secondary ${idx===0?'':''}  " onclick="gotoQ(${idx-1})" ${idx===0?'disabled':''}>← Previous</button>
+        <span class="text-muted text-sm">${idx+1} / ${questions.length}</span>
+        <button class="btn btn-primary" onclick="gotoQ(${idx+1})" ${idx===questions.length-1?'disabled':''}>Next →</button>
+      </div>
+    </div>`;
+  renderNav();
+}
+
+function selectOption(qId,val){
+  if(!answers[qId]) answers[qId]={};
+  answers[qId].selectedOption=val;
+  saveAnswer(qId);
+  renderNav();
+}
+
+function saveShort(qId,val){
+  if(!answers[qId]) answers[qId]={};
+  answers[qId].answerText=val;
+}
+
+function toggleFlag(qId){
+  flags[qId]=!flags[qId];
+  renderQuestion(currentQ);
+  if(submissionId) api.put('/conduct/submissions/'+submissionId+'/flag/'+qId,{}).catch(()=>{});
+}
+
+function gotoQ(idx){
+  if(idx<0||idx>=questions.length) return;
+  // Save short answer if current
+  const q=questions[currentQ];
+  if(q&&q.question_type==='short_answer'){
+    const el=document.getElementById('short-ans');
+    if(el){ if(!answers[q.id]) answers[q.id]={}; answers[q.id].answerText=el.value; saveAnswer(q.id); }
+  }
+  currentQ=idx;
+  renderQuestion(idx);
+}
+
+async function saveAnswer(qId){
+  if(!submissionId) return;
+  const ans=answers[qId]||{};
+  try{ await api.put('/conduct/submissions/'+submissionId+'/answers/'+qId,{selectedOption:ans.selectedOption,answerText:ans.answerText}); }catch{}
+}
+
+function startAutoSave(){
+  autoSaveInterval=setInterval(()=>{
+    const q=questions[currentQ];
+    if(q){ saveAnswer(q.id); }
+  },5000);
+}
+
+function startTimer(endTime){
+  function tick(){
+    const diff=new Date(endTime)-new Date();
+    if(diff<=0){ clearIntervals(); handleSubmit(true); return; }
+    const el=document.getElementById('timer');
+    const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000),s=Math.floor((diff%60000)/1000);
+    el.textContent=[h,m,s].map(n=>String(n).padStart(2,'0')).join(':');
+    if(diff<300000) el.classList.add('danger'); // 5 min warning
+  }
+  tick();
+  timerInterval=setInterval(tick,1000);
+}
+
+function clearIntervals(){ clearInterval(timerInterval); clearInterval(autoSaveInterval); }
+
+async function handleSubmit(isAuto=false){
+  if(!isAuto){
+    const unanswered=questions.filter(q=>!answers[q.id]||(!(answers[q.id].selectedOption||answers[q.id].answerText))).length;
+    const ok=await Modal.confirm(`You have <strong>${unanswered}</strong> unanswered question(s).<br><br>Are you sure you want to submit?`,'Submit Exam');
+    if(!ok) return;
+  }
+  clearIntervals();
+  document.getElementById('submit-btn').disabled=true;
+  try{
+    await api.post('/conduct/submissions/'+submissionId+'/submit',{});
+    Toast.success('Exam submitted successfully!');
+    setTimeout(()=>location.href='results.html',1500);
+  }catch(err){ Toast.error(err.message); document.getElementById('submit-btn').disabled=false; }
+}
+
+initExam();
+</script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Available Exams — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div><span style="font-weight:700">OES</span><span class="badge badge-primary">Student</span></div>
+  <div class="nav-links"><a class="nav-link" href="dashboard.html">🏠 Dashboard</a><a class="nav-link active" href="exams.html">📝 My Exams</a><a class="nav-link" href="results.html">📊 Results</a><a class="nav-link" href="notifications.html">🔔 Notifications <span id="notif-badge" class="badge badge-danger hidden">0</span></a></div>
+  <div class="nav-user"><div class="dropdown"><div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">U</div><div class="dropdown-menu"><div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div><div class="text-xs text-muted" id="nav-user-role"></div></div><button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button></div></div></div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Main</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item active" href="exams.html">📝 Available Exams</a>
+    <a class="sidebar-item" href="results.html">📊 My Results</a>
+    <div class="sidebar-section">Account</div>
+    <a class="sidebar-item" href="notifications.html">🔔 Notifications</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>Available Exams 📝</h1><p class="text-muted text-sm mt-1">All scheduled and active examinations</p></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-3" style="padding:16px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div class="search-bar" style="flex:1;min-width:200px"><span class="search-icon">🔍</span><input type="text" id="search" class="form-control" placeholder="Search exams..." oninput="filterExams()" style="padding-left:36px"></div>
+        <select id="status-filter" class="form-control" style="width:160px" onchange="filterExams()">
+          <option value="">All Status</option>
+          <option value="scheduled">Scheduled</option>
+          <option value="active">Active Now</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs mb-3">
+      <button class="tab active" onclick="switchTab('upcoming',this)">📅 Upcoming</button>
+      <button class="tab" onclick="switchTab('active',this)">⚡ Active Now</button>
+      <button class="tab" onclick="switchTab('completed',this)">✅ Completed</button>
+    </div>
+
+    <div id="exams-grid" class="grid-2"></div>
+    <div id="pagination" class="flex gap-1 mt-3"></div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['student']);
+let allExams=[], currentTab='upcoming', filtered=[], page=1;
+
+async function load(){
+  try{
+    const res=await api.get('/exams?limit=100');
+    allExams=res.data?.data||[];
+    filterExams();
+  }catch(err){ Toast.error('Failed to load: '+err.message); document.getElementById('exams-grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Failed to load exams</h3></div>'; }
+}
+
+function switchTab(tab,btn){
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  filterExams();
+}
+
+function filterExams(){
+  const q=document.getElementById('search').value.toLowerCase();
+  const status=document.getElementById('status-filter').value;
+  const now=new Date();
+
+  filtered=allExams.filter(e=>{
+    const start=new Date(e.start_datetime), end=new Date(e.end_datetime);
+    if(q&&!e.title.toLowerCase().includes(q)) return false;
+    if(status&&e.status!==status) return false;
+    if(currentTab==='upcoming') return start>now&&e.status==='scheduled';
+    if(currentTab==='active') return e.status==='active'||(start<=now&&end>now);
+    if(currentTab==='completed') return e.status==='completed'||end<now;
+    return true;
+  });
+  render();
+}
+
+function render(){
+  const limit=12, start=(page-1)*limit, pageData=filtered.slice(start,start+limit);
+  if(!pageData.length){
+    document.getElementById('exams-grid').innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📋</div><h3>No exams found</h3><p>Check back later for scheduled exams</p></div>';
+    return;
+  }
+  document.getElementById('exams-grid').innerHTML=pageData.map(e=>{
+    const now=new Date(), start=new Date(e.start_datetime), end=new Date(e.end_datetime);
+    const canTake=(e.status==='active'||e.status==='scheduled')&&start<=now&&end>now&&!e.submission_id;
+    const hasSubmitted=e.submission_status&&['submitted','auto_submitted'].includes(e.submission_status);
+    return `
+    <div class="card fade-in">
+      <div class="flex-between mb-2">
+        <span class="badge badge-primary">${e.subject_name||'General'}</span>
+        ${Format.badge(e.status)}
+      </div>
+      <h3 style="margin-bottom:8px">${e.title}</h3>
+      <p class="text-muted text-sm mb-3" style="line-height:1.5">${e.description||'No description provided.'}</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem;color:var(--text2);margin-bottom:16px">
+        <div>📅 ${Format.date(e.start_datetime)}</div>
+        <div>⏰ ${Format.time(e.start_datetime)}</div>
+        <div>⏱ ${e.duration_minutes} minutes</div>
+        <div>🎯 ${e.total_marks} marks</div>
+        <div>✅ Pass: ${e.pass_marks} marks</div>
+        <div>❓ ${e.question_count||'?'} questions</div>
+      </div>
+      <div>
+        ${hasSubmitted?`<div class="btn btn-success btn-block" style="cursor:default">✅ Submitted</div>`:
+          canTake?`<a href="exam.html?id=${e.id}" class="btn btn-primary btn-block">🚀 Start Exam</a>`:
+          e.status==='completed'?`<a href="results.html" class="btn btn-secondary btn-block">📊 View Results</a>`:
+          `<button class="btn btn-secondary btn-block" disabled>📅 Starts ${Format.datetime(e.start_datetime)}</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  const totalPages=Math.ceil(filtered.length/limit);
+  document.getElementById('pagination').innerHTML=totalPages>1?Array.from({length:totalPages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="page=${i+1};render()">${i+1}</button>`).join(''):'';
+}
+
+load();
+</script>
+</body>
+</html>

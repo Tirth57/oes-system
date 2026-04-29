@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Results — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div>
+    <span style="font-weight:700">OES</span>
+    <span class="badge badge-primary">Student</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="exams.html">📝 My Exams</a>
+    <a class="nav-link active" href="results.html">📊 Results</a>
+    <a class="nav-link" href="notifications.html">🔔 Notifications <span id="notif-badge" class="badge badge-danger hidden">0</span></a>
+  </div>
+  <div class="nav-user">
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">U</div>
+      <div class="dropdown-menu">
+        <div style="padding:12px;border-bottom:1px solid var(--border)"><div class="fw-medium" id="nav-user-name"></div><div class="text-xs text-muted" id="nav-user-role"></div></div>
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Main</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="exams.html">📝 Available Exams</a>
+    <a class="sidebar-item active" href="results.html">📊 My Results</a>
+    <div class="sidebar-section">Account</div>
+    <a class="sidebar-item" href="notifications.html">🔔 Notifications</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1>My Results 📊</h1><p class="text-muted text-sm mt-1">View all your exam performance</p></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid-4 mb-3">
+      <div class="stat-card"><div class="stat-icon blue">📝</div><div><div class="stat-value" id="r-total">—</div><div class="stat-label">Total Exams</div></div></div>
+      <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value" id="r-passed">—</div><div class="stat-label">Passed</div></div></div>
+      <div class="stat-card"><div class="stat-icon orange">📊</div><div><div class="stat-value" id="r-avg">—</div><div class="stat-label">Average %</div></div></div>
+      <div class="stat-card"><div class="stat-icon purple">🎯</div><div><div class="stat-value" id="r-passrate">—</div><div class="stat-label">Pass Rate</div></div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-bottom:24px">
+      <div class="card">
+        <h3 class="mb-2">📈 Score Trend</h3>
+        <div class="chart-container"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h3 class="mb-2">🏷️ Grade Distribution</h3>
+        <div class="chart-container"><canvas id="gradeChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Results table -->
+    <div class="card">
+      <div class="flex-between mb-3">
+        <h3>All Results</h3>
+        <div class="search-bar"><span class="search-icon">🔍</span><input class="form-control" id="search" placeholder="Search exams..." oninput="filterResults()" style="padding-left:36px;width:250px"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Exam</th><th>Subject</th><th>Score</th><th>%</th><th>Grade</th><th>Result</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody id="results-tbody"><tr><td colspan="8" class="text-center text-muted" style="padding:40px">Loading...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="flex-between mt-2" style="padding-top:12px;border-top:1px solid var(--border)">
+        <div class="text-muted text-sm" id="results-count"></div>
+        <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['student']);
+let allResults=[], filteredResults=[], page=1, limit=15;
+
+async function load(){
+  try{
+    const res=await api.get('/results/my?page=1&limit=100');
+    allResults=res.data?.results||[];
+    computeStats();
+    renderCharts();
+    filteredResults=[...allResults];
+    renderTable();
+  }catch(err){ Toast.error('Failed to load results: '+err.message); }
+}
+
+function computeStats(){
+  const total=allResults.length;
+  const passed=allResults.filter(r=>r.is_passed).length;
+  const avg=total?(allResults.reduce((a,r)=>a+parseFloat(r.percentage||0),0)/total).toFixed(1):0;
+  const passRate=total?((passed/total)*100).toFixed(0):0;
+  document.getElementById('r-total').textContent=total;
+  document.getElementById('r-passed').textContent=passed;
+  document.getElementById('r-avg').textContent=avg+'%';
+  document.getElementById('r-passrate').textContent=passRate+'%';
+}
+
+function renderCharts(){
+  const scores=[...allResults].reverse().slice(-10);
+  new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:scores.map(r=>r.title.slice(0,15)),datasets:[{label:'%',data:scores.map(r=>parseFloat(r.percentage||0)),borderColor:'#667eea',backgroundColor:'rgba(102,126,234,.1)',fill:true,tension:.4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#a0aec0'},grid:{color:'rgba(255,255,255,.05)'}},x:{grid:{display:false},ticks:{color:'#a0aec0',maxRotation:45}}}}
+  });
+  const grades=allResults.reduce((a,r)=>{ if(r.grade){a[r.grade]=(a[r.grade]||0)+1;} return a; },{});
+  const colors=['#667eea','#764ba2','#48bb78','#ed8936','#fc5c7d','#4299e1','#a0aec0'];
+  new Chart(document.getElementById('gradeChart'),{
+    type:'doughnut',
+    data:{labels:Object.keys(grades),datasets:[{data:Object.values(grades),backgroundColor:colors,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#a0aec0',padding:12,font:{size:11}}}}}
+  });
+}
+
+function filterResults(){
+  const q=document.getElementById('search').value.toLowerCase();
+  filteredResults=allResults.filter(r=>r.title.toLowerCase().includes(q)||(r.subject_name||'').toLowerCase().includes(q));
+  page=1; renderTable();
+}
+
+function renderTable(){
+  const start=(page-1)*limit, end=start+limit;
+  const pageData=filteredResults.slice(start,end);
+  document.getElementById('results-count').textContent=`Showing ${start+1}–${Math.min(end,filteredResults.length)} of ${filteredResults.length}`;
+  document.getElementById('results-tbody').innerHTML=pageData.length?pageData.map(r=>`
+    <tr>
+      <td><div class="fw-medium">${r.title}</div><div class="text-xs text-muted">${Format.date(r.start_datetime)}</div></td>
+      <td>${r.subject_name||'—'}</td>
+      <td class="fw-bold">${Format.marks(r.total_score,r.total_marks)}</td>
+      <td><span style="font-weight:700;color:${parseFloat(r.percentage)>=50?'var(--success)':'var(--danger)'}">${Format.percent(r.percentage)}</span></td>
+      <td><span class="badge badge-primary">${r.grade||'—'}</span></td>
+      <td>${Format.badge(r.is_passed?'passed':'failed')}</td>
+      <td class="text-muted">${Format.date(r.submitted_at)}</td>
+      <td><a href="result-detail.html?id=${r.id}" class="btn btn-outline btn-sm">View</a></td>
+    </tr>`).join(''):`<tr><td colspan="8" class="text-center text-muted" style="padding:40px">No results found</td></tr>`;
+
+  // Pagination
+  const totalPages=Math.ceil(filteredResults.length/limit);
+  document.getElementById('pagination').innerHTML=Array.from({length:totalPages},(_,i)=>`<button class="page-btn ${i+1===page?'active':''}" onclick="gotoPage(${i+1})">${i+1}</button>`).join('');
+}
+
+function gotoPage(p){ page=p; renderTable(); window.scrollTo(0,0); }
+
+load();
+</script>
+</body>
+</html>

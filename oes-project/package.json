@@ -1,0 +1,16 @@
+{
+  "name": "oes-project",
+  "version": "1.0.0",
+  "description": "Online Examination System",
+  "scripts": {
+    "start": "node backend/src/app.js",
+    "dev": "cd backend && npm run dev",
+    "install:all": "cd backend && npm install",
+    "migrate": "cd backend && npm run migrate",
+    "seed": "cd backend && node migrations/run.js",
+    "build": "echo 'No build step required for vanilla frontend'"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
