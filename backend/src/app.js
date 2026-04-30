@@ -103,6 +103,32 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
+// ─── Temporary Debug Route ────────────────────────────────────
+app.get('/api/debug-reset', async (req, res) => {
+  const { pool } = require('./config/database');
+  try {
+    const bcrypt = require('bcryptjs');
+    const newHash = await bcrypt.hash('Admin@1234', 12);
+    
+    // Check if users exist at all
+    const check = await pool.query('SELECT email FROM users');
+    if (check.rows.length === 0) {
+      return res.json({ success: false, message: 'NO USERS IN DATABASE!' });
+    }
+
+    // Force update password
+    await pool.query(`UPDATE users SET password_hash = $1, status = 'active', email_verified = true`, [newHash]);
+    
+    res.json({ 
+      success: true, 
+      message: 'All passwords have been forcibly reset to Admin@1234', 
+      users_found: check.rows.map(r => r.email) 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Global Error Handler ─────────────────────────────────────
 app.use((err, req, res, next) => {
   logger.error('Unhandled error:', { message: err.message, stack: err.stack, path: req.path });
