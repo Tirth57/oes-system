@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reports — OES Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div>
+    <span style="font-weight:700">OES</span>
+    <span class="badge badge-danger">Admin</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="users.html">👥 Users</a>
+    <a class="nav-link" href="subjects.html">📚 Subjects</a>
+    <a class="nav-link active" href="reports.html">📊 Reports</a>
+    <a class="nav-link" href="settings.html">⚙️ Settings</a>
+  </div>
+  <div class="nav-user">
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">A</div>
+      <div class="dropdown-menu">
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="dashboard-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">Management</div>
+    <a class="sidebar-item" href="dashboard.html">🏠 Dashboard</a>
+    <a class="sidebar-item" href="users.html">👥 Manage Users</a>
+    <a class="sidebar-item" href="subjects.html">📚 Subjects & Topics</a>
+    <a class="sidebar-item active" href="reports.html">📊 System Reports</a>
+    <div class="sidebar-section">Configuration</div>
+    <a class="sidebar-item" href="settings.html">⚙️ Settings</a>
+  </aside>
+
+  <main class="main-content">
+    <div class="flex-between mb-3">
+      <div><h1 id="page-title">Reports 📊</h1><p class="text-muted text-sm mt-1" id="page-desc">View exam performance and download results</p></div>
+      <div id="action-buttons" style="display:none" class="flex gap-2">
+        <button class="btn btn-outline" onclick="download('excel')">📥 Excel</button>
+        <button class="btn btn-primary" onclick="download('pdf')">📄 PDF</button>
+      </div>
+    </div>
+
+    <!-- State 1: Select Exam -->
+    <div id="select-exam-view" style="display:block">
+      <div class="card">
+        <h3 class="mb-3">Select a Completed Exam</h3>
+        <div id="exam-list">Loading exams...</div>
+      </div>
+    </div>
+
+    <!-- State 2: View Report -->
+    <div id="report-view" style="display:none">
+      <div class="grid-4 mb-3" id="stats-grid">
+        <div class="stat-card"><div class="stat-icon blue">👥</div><div><div class="stat-value" id="s-total">—</div><div class="stat-label">Students</div></div></div>
+        <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-value" id="s-passed">—</div><div class="stat-label">Passed</div></div></div>
+        <div class="stat-card"><div class="stat-icon orange">📊</div><div><div class="stat-value" id="s-avg">—</div><div class="stat-label">Avg Score</div></div></div>
+        <div class="stat-card"><div class="stat-icon purple">🏆</div><div><div class="stat-value" id="s-highest">—</div><div class="stat-label">Highest %</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Enrollment</th><th>Score</th><th>%</th><th>Grade</th><th>Result</th></tr></thead>
+            <tbody id="results-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['administrator']);
+const urlParams = new URLSearchParams(window.location.search);
+const examId = urlParams.get('examId');
+
+async function init(){
+  if(examId){
+    document.getElementById('select-exam-view').style.display = 'none';
+    document.getElementById('report-view').style.display = 'block';
+    document.getElementById('action-buttons').style.display = 'flex';
+    loadReport();
+  }else{
+    loadExams();
+  }
+}
+
+async function loadExams(){
+  try{
+    const res = await api.get('/exams?status=completed&limit=50');
+    const exams = res.data || [];
+    document.getElementById('exam-list').innerHTML = exams.length ? exams.map(e=>`
+      <div class="card card-sm mb-2" style="cursor:pointer" onclick="window.location.href='reports.html?examId=${e.id}'">
+        <div class="flex-between">
+          <div><div class="fw-medium">${e.title}</div><div class="text-xs text-muted">${Format.date(e.start_datetime)}</div></div>
+          <button class="btn btn-secondary btn-sm">View Report →</button>
+        </div>
+      </div>
+    `).join('') : '<div class="empty-state">No completed exams found</div>';
+  }catch(err){ Toast.error(err.message); }
+}
+
+async function loadReport(){
+  try{
+    const res = await api.get('/results/exams/' + examId + '?limit=100');
+    const results = res.data || [];
+    
+    document.getElementById('page-title').textContent = 'Exam Report';
+    document.getElementById('page-desc').innerHTML = `<a href="reports.html">← Back to all reports</a>`;
+
+    const total = results.length;
+    const passed = results.filter(r=>r.is_passed).length;
+    const avg = total ? (results.reduce((a,r)=>a+parseFloat(r.percentage),0)/total).toFixed(1) : 0;
+    const max = total ? Math.max(...results.map(r=>parseFloat(r.percentage))).toFixed(1) : 0;
+
+    document.getElementById('s-total').textContent = total;
+    document.getElementById('s-passed').textContent = passed;
+    document.getElementById('s-avg').textContent = avg + '%';
+    document.getElementById('s-highest').textContent = max + '%';
+
+    document.getElementById('results-tbody').innerHTML = results.length ? results.map(r=>`
+      <tr>
+        <td class="fw-medium">${r.student_name}</td>
+        <td class="text-muted">${r.enrollment_number}</td>
+        <td class="fw-bold">${Format.marks(r.total_score, r.total_marks)}</td>
+        <td><span style="font-weight:700;color:${parseFloat(r.percentage)>=50?'var(--success)':'var(--danger)'}">${Format.percent(r.percentage)}</span></td>
+        <td><span class="badge badge-primary">${r.grade||'—'}</span></td>
+        <td>${Format.badge(r.is_passed?'passed':'failed')}</td>
+      </tr>
+    `).join('') : '<tr><td colspan="6" class="text-center text-muted p-3">No submissions yet</td></tr>';
+
+  }catch(err){ Toast.error('Failed to load report'); }
+}
+
+function download(type){
+  const token = localStorage.getItem('token');
+  window.open(`${api.baseURL}/results/exams/${examId}/${type}?token=${token}`, '_blank');
+}
+
+init();
+</script>
+</body>
+</html>

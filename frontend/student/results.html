@@ -93,7 +93,7 @@ let allResults=[], filteredResults=[], page=1, limit=15;
 async function load(){
   try{
     const res=await api.get('/results/my?page=1&limit=100');
-    allResults=res.data?.results||[];
+    allResults=res.data||[];
     computeStats();
     renderCharts();
     filteredResults=[...allResults];

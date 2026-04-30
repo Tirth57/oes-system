@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Result Detail — OES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/main.css">
+<style>
+  .detail-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+  .ans-card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; background: var(--bg2); }
+  .ans-card.correct { border-left: 4px solid var(--success); }
+  .ans-card.wrong { border-left: 4px solid var(--danger); }
+  .ans-card.pending { border-left: 4px solid var(--warning); }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <div class="flex gap-2">
+    <div style="width:36px;height:36px;background:linear-gradient(135deg,var(--primary),var(--secondary));border-radius:8px;display:flex;align-items:center;justify-content:center">📚</div>
+    <span style="font-weight:700">OES</span>
+    <span class="badge badge-primary">Student</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link" href="dashboard.html">🏠 Dashboard</a>
+    <a class="nav-link" href="exams.html">📝 My Exams</a>
+    <a class="nav-link active" href="results.html">📊 Results</a>
+  </div>
+  <div class="nav-user">
+    <div class="dropdown">
+      <div class="avatar" id="nav-avatar" onclick="this.closest('.dropdown').classList.toggle('open')">U</div>
+      <div class="dropdown-menu">
+        <button class="dropdown-item danger" onclick="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<div class="container" style="padding-top: 40px; padding-bottom: 60px;">
+  <div class="flex-between mb-3">
+    <div>
+      <a href="results.html" class="text-sm text-muted mb-1" style="display:inline-block">← Back to Results</a>
+      <h1 id="r-title">Loading...</h1>
+      <p class="text-muted text-sm mt-1" id="r-subject">...</p>
+    </div>
+    <div id="r-badge"></div>
+  </div>
+
+  <div class="grid-4 mb-3" id="stats-grid" style="display:none">
+    <div class="stat-card"><div class="stat-icon blue">🎯</div><div><div class="stat-value" id="s-score">—</div><div class="stat-label">Score</div></div></div>
+    <div class="stat-card"><div class="stat-icon purple">📊</div><div><div class="stat-value" id="s-pct">—</div><div class="stat-label">Percentage</div></div></div>
+    <div class="stat-card"><div class="stat-icon orange">🏆</div><div><div class="stat-value" id="s-grade">—</div><div class="stat-label">Grade</div></div></div>
+    <div class="stat-card"><div class="stat-icon green">⏱️</div><div><div class="stat-value" id="s-time">—</div><div class="stat-label">Time Taken</div></div></div>
+  </div>
+
+  <h3 class="mb-2">Questions Breakdown</h3>
+  <div id="answers-list"><div class="text-center text-muted" style="padding:40px">Loading answers...</div></div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+Auth.requireAuth(['student']);
+
+async function load(){
+  const urlParams = new URLSearchParams(window.location.search);
+  const id = urlParams.get('id');
+  if(!id){ Toast.error('No submission ID provided'); return; }
+
+  try{
+    const res = await api.get('/results/submissions/' + id);
+    const sub = res.data.submission;
+    const ans = res.data.answers;
+
+    document.getElementById('r-title').textContent = sub.title;
+    document.getElementById('r-subject').textContent = sub.subject_name || 'General';
+    document.getElementById('r-badge').innerHTML = Format.badge(sub.is_passed ? 'passed' : 'failed');
+
+    document.getElementById('stats-grid').style.display = 'grid';
+    document.getElementById('s-score').textContent = sub.total_score + ' / ' + (ans.reduce((a,c)=>a+parseFloat(c.marks),0));
+    document.getElementById('s-pct').textContent = parseFloat(sub.percentage).toFixed(1) + '%';
+    document.getElementById('s-grade').textContent = sub.grade || 'N/A';
+    document.getElementById('s-time').textContent = Math.floor(sub.time_taken_seconds / 60) + 'm ' + (sub.time_taken_seconds % 60) + 's';
+
+    document.getElementById('answers-list').innerHTML = ans.map((a, i) => {
+      let state = 'pending';
+      if(a.status === 'graded' || a.is_auto_graded){
+        state = a.is_correct ? 'correct' : 'wrong';
+      }
+      return `
+        <div class="ans-card ${state}">
+          <div class="flex-between mb-1">
+            <div class="fw-medium text-sm text-muted">Question ${i+1}</div>
+            <div class="text-xs fw-bold ${a.is_correct ? 'text-success' : 'text-danger'}">${a.marks_obtained || 0} / ${a.marks} marks</div>
+          </div>
+          <p style="margin-bottom:12px">${a.question_text}</p>
+          <div style="font-size:0.9rem">
+            <div><span class="text-muted">Your Answer:</span> <span class="fw-medium">${a.selected_option || 'Not answered'}</span></div>
+            ${!a.is_correct && a.correct_answer !== 'manual_review' ? `<div class="mt-1"><span class="text-muted">Correct Answer:</span> <span class="text-success fw-medium">${a.correct_answer}</span></div>` : ''}
+          </div>
+          ${a.explanation ? `<div class="mt-2 text-sm text-muted" style="padding-top:8px;border-top:1px dashed var(--border)">💡 <strong>Explanation:</strong> ${a.explanation}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+  }catch(err){ 
+    Toast.error('Failed to load detail: ' + err.message); 
+    document.getElementById('answers-list').innerHTML = '<div class="empty-state">Failed to load result.</div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

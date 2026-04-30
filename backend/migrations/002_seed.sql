@@ -179,3 +179,39 @@ INSERT INTO notifications (recipient_id, type, title, message, is_read, related_
 ('00000000-0000-0000-0000-000000000004', 'exam_scheduled', 'New Exam Scheduled', 'A new exam "Mid-Semester Examination - Data Structures" has been scheduled for tomorrow.', FALSE, '00000000-0000-0000-0000-000000000040'),
 ('00000000-0000-0000-0000-000000000004', 'result_published', 'Results Published', 'Results for "Quiz 1 - Database Fundamentals" have been published. You scored 66.67%.', TRUE, '00000000-0000-0000-0000-000000000041'),
 ('00000000-0000-0000-0000-000000000005', 'exam_scheduled', 'New Exam Scheduled', 'A new exam "Mid-Semester Examination - Data Structures" has been scheduled for tomorrow.', FALSE, '00000000-0000-0000-0000-000000000040');
+
+-- Demo Paper 1: Operating Systems Final
+INSERT INTO exams (id, title, subject_id, description, instructions, start_datetime, end_datetime, duration_minutes, total_marks, pass_marks, status, created_by, is_published) VALUES
+('00000000-0000-0000-0000-000000000042',
+ 'Final Examination - Operating Systems',
+ '00000000-0000-0000-0000-000000000012',
+ 'Comprehensive exam covering all OS concepts.',
+ 'No external resources allowed.',
+ NOW() + INTERVAL '2 days',
+ NOW() + INTERVAL '2 days 3 hours',
+ 120, 100.0, 40.0, 'scheduled',
+ '00000000-0000-0000-0000-000000000003', TRUE);
+
+-- Demo Paper 2: Mathematics Mock Test
+INSERT INTO exams (id, title, subject_id, description, instructions, start_datetime, end_datetime, duration_minutes, total_marks, pass_marks, status, created_by, is_published) VALUES
+('00000000-0000-0000-0000-000000000043',
+ 'Mock Test - Mathematics',
+ '00000000-0000-0000-0000-000000000013',
+ 'Practice test for upcoming mid-terms.',
+ 'Calculators allowed.',
+ NOW() + INTERVAL '5 days',
+ NOW() + INTERVAL '5 days 1 hour',
+ 60, 50.0, 20.0, 'scheduled',
+ '00000000-0000-0000-0000-000000000002', TRUE);
+
+-- Demo Paper 3: Active Exam
+INSERT INTO exams (id, title, subject_id, description, instructions, start_datetime, end_datetime, duration_minutes, total_marks, pass_marks, status, created_by, is_published) VALUES
+('00000000-0000-0000-0000-000000000044',
+ 'Pop Quiz - Data Structures',
+ '00000000-0000-0000-0000-000000000010',
+ 'Surprise quiz!',
+ 'Answer quickly.',
+ NOW() - INTERVAL '1 hour',
+ NOW() + INTERVAL '1 hour',
+ 30, 20.0, 10.0, 'active',
+ '00000000-0000-0000-0000-000000000003', TRUE);
