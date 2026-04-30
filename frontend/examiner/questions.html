@@ -91,6 +91,8 @@ async function loadSubjects(){
     sel.innerHTML='<option value="">Select subject</option>'+opts;
     fsel.innerHTML='<option value="">All Subjects</option>'+opts;
   }catch{}
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get('new')) openModal();
 }
 
 async function load(){

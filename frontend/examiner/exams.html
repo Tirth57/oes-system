@@ -95,6 +95,8 @@ async function init(){
     renderQChecklist();
   }catch{}
   load();
+  const urlParams = new URLSearchParams(window.location.search);
+  if(urlParams.get('new')) Modal.open('create-exam-modal');
 }
 
 function renderQChecklist(){
