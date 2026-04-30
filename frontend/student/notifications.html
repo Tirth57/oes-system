@@ -31,8 +31,8 @@ const icons={exam_scheduled:'📅',exam_reminder:'⏰',exam_submitted:'✅',resu
 async function load(){
   try{
     const res=await api.get('/notifications?page='+page+'&limit='+limit);
-    const notifs=res.data?.data||[];
-    total=res.data?.pagination?.total||0;
+    const notifs=res.data||[];
+    total=res.pagination?.total||0;
     document.getElementById('notifs-list').innerHTML=notifs.length?notifs.map(n=>`
       <div class="card mb-2 ${n.is_read?'':'card'}" style="${n.is_read?'':'border-color:var(--primary)'}">
         <div class="flex gap-2">

@@ -103,16 +103,16 @@ async function load(){
   try{
     // Questions count
     const qRes=await api.get('/questions?limit=1');
-    document.getElementById('s-questions').textContent=qRes.data?.pagination?.total||0;
+    document.getElementById('s-questions').textContent=qRes.pagination?.total||0;
 
     // Exams
     const eRes=await api.get('/exams?limit=50');
-    const exams=eRes.data?.data||[];
-    document.getElementById('s-exams').textContent=eRes.data?.pagination?.total||0;
+    const exams=eRes.data||[];
+    document.getElementById('s-exams').textContent=eRes.pagination?.total||0;
 
     // Pending reviews
     const pRes=await api.get('/evaluation/pending?limit=1');
-    document.getElementById('s-pending').textContent=pRes.data?.pagination?.total||0;
+    document.getElementById('s-pending').textContent=pRes.pagination?.total||0;
 
     // My exams list
     const eHtml=exams.slice(0,4).map(e=>`
@@ -134,7 +134,7 @@ async function load(){
 
     // Pending reviews
     const prRes=await api.get('/evaluation/pending?limit=3');
-    const reviews=prRes.data?.data||[];
+    const reviews=prRes.data||[];
     const prHtml=reviews.map(r=>`
       <div class="card card-sm" style="margin-bottom:8px">
         <div class="flex-between">

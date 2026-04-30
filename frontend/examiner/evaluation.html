@@ -76,8 +76,8 @@ let page=1,limit=10,total=0,currentAnswerId=null,currentMaxMarks=0;
 async function load(){
   try{
     const res=await api.get('/evaluation/pending?page='+page+'&limit='+limit);
-    const reviews=res.data?.data||[];
-    total=res.data?.pagination?.total||0;
+    const reviews=res.data||[];
+    total=res.pagination?.total||0;
     document.getElementById('pending-count').textContent=total+' Pending';
 
     document.getElementById('reviews-list').innerHTML=reviews.length?reviews.map(r=>`

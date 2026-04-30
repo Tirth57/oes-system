@@ -145,8 +145,8 @@ async function load(){
 
     // Exams
     const eRes=await api.get('/exams?limit=5');
-    const exams=eRes.data?.data||[];
-    document.getElementById('a-exams').textContent=eRes.data?.pagination?.total||0;
+    const exams=eRes.data||[];
+    document.getElementById('a-exams').textContent=eRes.pagination?.total||0;
     document.getElementById('a-active').textContent=exams.filter(e=>e.status==='active').length;
 
     document.getElementById('recent-exams').innerHTML=exams.map(e=>`
@@ -156,10 +156,10 @@ async function load(){
       </div>`).join('')||'<p class="text-muted">No exams found</p>';
 
     // Questions
-    try{ const qRes=await api.get('/questions?limit=1'); document.getElementById('a-questions').textContent=qRes.data?.pagination?.total||0; }catch{}
+    try{ const qRes=await api.get('/questions?limit=1'); document.getElementById('a-questions').textContent=qRes.pagination?.total||0; }catch{}
 
     // Pending
-    try{ const pRes=await api.get('/evaluation/pending?limit=1'); document.getElementById('a-pending').textContent=pRes.data?.pagination?.total||0; }catch{}
+    try{ const pRes=await api.get('/evaluation/pending?limit=1'); document.getElementById('a-pending').textContent=pRes.pagination?.total||0; }catch{}
 
     // Charts
     const labels=['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10'];

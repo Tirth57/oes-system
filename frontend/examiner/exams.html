@@ -91,7 +91,7 @@ async function init(){
     const opts=subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
     document.getElementById('e-subject').innerHTML='<option value="">Select Subject</option>'+opts;
     const qRes=await api.get('/questions?limit=200');
-    allQuestions=qRes.data?.data||[];
+    allQuestions=qRes.data||[];
     renderQChecklist();
   }catch{}
   load();
@@ -150,8 +150,8 @@ async function load(){
   if(status) params.append('status',status);
   try{
     const res=await api.get('/exams?'+params);
-    const exams=res.data?.data||[];
-    total=res.data?.pagination?.total||0;
+    const exams=res.data||[];
+    total=res.pagination?.total||0;
     document.getElementById('exams-list').innerHTML=exams.length?exams.map(e=>`
       <div class="card mb-2 fade-in">
         <div class="flex-between">

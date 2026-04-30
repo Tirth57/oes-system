@@ -61,7 +61,7 @@ let allExams=[], currentTab='upcoming', filtered=[], page=1;
 async function load(){
   try{
     const res=await api.get('/exams?limit=100');
-    allExams=res.data?.data||[];
+    allExams=res.data||[];
     filterExams();
   }catch(err){ Toast.error('Failed to load: '+err.message); document.getElementById('exams-grid').innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Failed to load exams</h3></div>'; }
 }

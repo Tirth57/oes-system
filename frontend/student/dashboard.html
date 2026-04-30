@@ -161,7 +161,7 @@ async function loadDashboard(){
   // Upcoming exams
   try{
     const res = await api.get('/exams?status=scheduled&limit=5');
-    const exams = res.data?.data || [];
+    const exams = res.data || [];
     const eHtml = exams.slice(0,3).map(e=>`
       <div class="card card-sm" style="margin-bottom:8px">
         <div class="flex-between">
@@ -175,7 +175,7 @@ async function loadDashboard(){
   // Notifications
   try{
     const res = await api.get('/notifications?limit=3');
-    const notifs = res.data?.data || [];
+    const notifs = res.data || [];
     const nHtml = notifs.map(n=>`
       <div style="padding:12px 0;border-bottom:1px solid var(--border);display:flex;gap:12px;align-items:flex-start" onclick="markRead('${n.id}')">
         <div style="width:8px;height:8px;border-radius:50%;background:${n.is_read?'var(--border)':'var(--primary)'};margin-top:6px;flex-shrink:0"></div>

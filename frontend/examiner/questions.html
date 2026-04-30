@@ -105,8 +105,8 @@ async function load(){
   if(subject) params.append('subjectId',subject);
   try{
     const res=await api.get('/questions?'+params);
-    const qs=res.data?.data||[];
-    totalQ=res.data?.pagination?.total||0;
+    const qs=res.data||[];
+    totalQ=res.pagination?.total||0;
     document.getElementById('q-count').textContent=`${totalQ} question(s)`;
     document.getElementById('q-tbody').innerHTML=qs.length?qs.map(q=>`
       <tr>
