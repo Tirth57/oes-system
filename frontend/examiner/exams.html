@@ -82,7 +82,6 @@
 <script>
 Auth.requireAuth(['examiner','administrator']);
 let page=1,limit=10,total=0,allQuestions=[],subjects=[];
-const selectedQs=new Set();
 
 async function init(){
   try{
@@ -102,12 +101,10 @@ async function init(){
 function renderQChecklist(){
   document.getElementById('q-checklist').innerHTML=allQuestions.length?allQuestions.map(q=>`
     <label style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;cursor:pointer">
-      <input type="checkbox" value="${q.id}" style="margin-top:3px" onchange="toggleQ('${q.id}',this.checked)">
+      <input type="checkbox" value="${q.id}" style="margin-top:3px">
       <div><div class="text-sm fw-medium">${q.question_text.slice(0,80)}...</div><div class="text-xs text-muted">${Format.badge(q.question_type)} ${Format.badge(q.difficulty)} · ${q.marks} mark(s)</div></div>
     </label>`).join(''):'<p class="text-muted">No questions available. Create questions first.</p>';
 }
-
-function toggleQ(id,checked){ checked?selectedQs.add(id):selectedQs.delete(id); }
 
 function showQSelect(type){
   document.getElementById('manual-q-select').style.display=type==='manual'?'block':'none';
@@ -123,12 +120,14 @@ async function createExam(){
   const pass=parseFloat(document.getElementById('e-pass').value);
   const qtype=document.querySelector('input[name="qtype"]:checked').value;
 
+  const checkedBoxes = Array.from(document.querySelectorAll('#q-checklist input:checked')).map(cb => cb.value);
+
   if(!title||!subjectId||!start||!end){ Toast.warning('Fill all required fields'); return; }
   if(new Date(start)<=new Date()){ Toast.warning('Start time must be in the future'); return; }
   if(new Date(end)<=new Date(start)){ Toast.warning('End time must be after start'); return; }
-  if(qtype==='manual'&&selectedQs.size===0){ Toast.warning('Select at least one question'); return; }
+  if(qtype==='manual'&&checkedBoxes.length===0){ Toast.warning('Select at least one question'); return; }
 
-  const payload={title,subjectId,startDatetime:new Date(start).toISOString(),endDatetime:new Date(end).toISOString(),durationMinutes:duration,totalMarks:marks,passMarks:pass,description:document.getElementById('e-desc').value,instructions:document.getElementById('e-instructions').value,questionSelectionType:qtype,questions:[...selectedQs],shuffleQuestions:document.getElementById('e-shuffle-q').checked,shuffleOptions:document.getElementById('e-shuffle-o').checked,negativeMarking:document.getElementById('e-neg').checked};
+  const payload={title,subjectId,startDatetime:new Date(start).toISOString(),endDatetime:new Date(end).toISOString(),durationMinutes:duration,totalMarks:marks,passMarks:pass,description:document.getElementById('e-desc').value,instructions:document.getElementById('e-instructions').value,questionSelectionType:qtype,questions:checkedBoxes,shuffleQuestions:document.getElementById('e-shuffle-q').checked,shuffleOptions:document.getElementById('e-shuffle-o').checked,negativeMarking:document.getElementById('e-neg').checked};
 
   const btn=document.getElementById('create-exam-btn');
   Loading.show(btn,'Creating...');
@@ -139,7 +138,11 @@ async function createExam(){
     }
     Modal.close('create-exam-modal');
     Toast.success('Exam created!');
-    selectedQs.clear(); load();
+    
+    // Clear checkboxes visually
+    document.querySelectorAll('#q-checklist input:checked').forEach(cb => cb.checked = false);
+    
+    load();
   }catch(err){ Toast.error(err.message); }
   finally{ Loading.hide(btn); }
 }
