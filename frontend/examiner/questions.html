@@ -63,7 +63,7 @@
         <div class="form-group" style="grid-column:1/-1"><label class="form-label">Question Text *</label><textarea id="q-text" class="form-control" rows="3" placeholder="Enter your question..."></textarea></div>
         <div class="form-group"><label class="form-label">Type *</label><select id="q-type" class="form-control" onchange="renderOptions()"><option value="mcq">MCQ</option><option value="true_false">True/False</option><option value="short_answer">Short Answer</option></select></div>
         <div class="form-group"><label class="form-label">Difficulty *</label><select id="q-diff" class="form-control"><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
-        <div class="form-group"><label class="form-label">Subject *</label><select id="q-subject" class="form-control"></select></div>
+        <div class="form-group"><div class="flex-between mb-1"><label class="form-label" style="margin:0">Subject *</label><button type="button" class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:0.75rem" onclick="openSubjectModal()">+ New Subject</button></div><select id="q-subject" class="form-control"></select></div>
         <div class="form-group"><label class="form-label">Marks *</label><input type="number" id="q-marks" class="form-control" value="1" min="0.5" step="0.5"></div>
       </div>
       <div id="options-section"></div>
@@ -73,6 +73,22 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="save-q-btn" onclick="saveQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Subject Modal -->
+<div class="modal-overlay" id="subject-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header"><div class="modal-title">New Subject</div><button class="modal-close" onclick="Modal.close('subject-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Subject Name *</label><input type="text" id="s-name" class="form-control" placeholder="e.g. Physics"></div>
+      <div class="form-group"><label class="form-label">Subject Code *</label><input type="text" id="s-code" class="form-control" placeholder="e.g. PHY101"></div>
+      <div class="form-group"><label class="form-label">Department</label><input type="text" id="s-dept" class="form-control" placeholder="e.g. Science"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Modal.close('subject-modal')">Cancel</button>
+      <button class="btn btn-primary" id="save-s-btn" onclick="saveSubject()">Save Subject</button>
     </div>
   </div>
 </div>
@@ -236,6 +252,29 @@ async function editQ(id){
     if(q.question_type==='true_false'){ const el=document.getElementById('tf-correct'); if(el) el.value=q.correct_answer; }
     if(q.model_answer){ const el=document.getElementById('q-model-ans'); if(el) el.value=q.model_answer; }
   }catch(err){ Toast.error('Failed to load question'); }
+}
+
+function openSubjectModal(){
+  document.getElementById('s-name').value='';
+  document.getElementById('s-code').value='';
+  document.getElementById('s-dept').value='';
+  Modal.open('subject-modal');
+}
+
+async function saveSubject(){
+  const name=document.getElementById('s-name').value.trim();
+  const code=document.getElementById('s-code').value.trim();
+  const department=document.getElementById('s-dept').value.trim();
+  if(!name||!code){ Toast.warning('Name and Code are required'); return; }
+  const btn=document.getElementById('save-s-btn');
+  Loading.show(btn,'Saving...');
+  try{
+    await api.post('/questions/subjects', {name, code, department});
+    Modal.close('subject-modal');
+    Toast.success('Subject created!');
+    loadSubjects();
+  }catch(err){ Toast.error(err.message); }
+  finally{ Loading.hide(btn); }
 }
 
 loadSubjects().then(load);

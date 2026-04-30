@@ -180,6 +180,46 @@ INSERT INTO notifications (recipient_id, type, title, message, is_read, related_
 ('00000000-0000-0000-0000-000000000004', 'result_published', 'Results Published', 'Results for "Quiz 1 - Database Fundamentals" have been published. You scored 66.67%.', TRUE, '00000000-0000-0000-0000-000000000041'),
 ('00000000-0000-0000-0000-000000000005', 'exam_scheduled', 'New Exam Scheduled', 'A new exam "Mid-Semester Examination - Data Structures" has been scheduled for tomorrow.', FALSE, '00000000-0000-0000-0000-000000000040');
 
+-- 5 More Sample Questions for the Question Bank
+INSERT INTO questions (id, question_text, question_type, difficulty, subject_id, topic_id, marks, correct_answer, created_by) VALUES
+('00000000-0000-0000-0000-000000000050',
+ 'Which scheduling algorithm allocates the CPU to the process that requests it first?',
+ 'mcq', 'easy', '00000000-0000-0000-0000-000000000012', NULL,
+ 1.0, 'A', '00000000-0000-0000-0000-000000000003'),
+('00000000-0000-0000-0000-000000000051',
+ 'Which of the following is not a valid SQL constraint?',
+ 'mcq', 'medium', '00000000-0000-0000-0000-000000000011', '00000000-0000-0000-0000-000000000023',
+ 2.0, 'C', '00000000-0000-0000-0000-000000000003'),
+('00000000-0000-0000-0000-000000000052',
+ 'Paging suffers from external fragmentation.',
+ 'true_false', 'medium', '00000000-0000-0000-0000-000000000012', NULL,
+ 1.0, 'false', '00000000-0000-0000-0000-000000000003'),
+('00000000-0000-0000-0000-000000000053',
+ 'What is the derivative of e^x?',
+ 'mcq', 'easy', '00000000-0000-0000-0000-000000000013', NULL,
+ 1.0, 'B', '00000000-0000-0000-0000-000000000003'),
+('00000000-0000-0000-0000-000000000054',
+ 'Every continuous function is differentiable.',
+ 'true_false', 'hard', '00000000-0000-0000-0000-000000000013', NULL,
+ 1.0, 'false', '00000000-0000-0000-0000-000000000003');
+
+INSERT INTO question_options (question_id, option_text, option_key, is_correct, display_order) VALUES
+-- Q50
+('00000000-0000-0000-0000-000000000050', 'First-Come, First-Served', 'A', TRUE, 1),
+('00000000-0000-0000-0000-000000000050', 'Shortest Job First', 'B', FALSE, 2),
+('00000000-0000-0000-0000-000000000050', 'Round Robin', 'C', FALSE, 3),
+('00000000-0000-0000-0000-000000000050', 'Priority Scheduling', 'D', FALSE, 4),
+-- Q51
+('00000000-0000-0000-0000-000000000051', 'PRIMARY KEY', 'A', FALSE, 1),
+('00000000-0000-0000-0000-000000000051', 'NOT NULL', 'B', FALSE, 2),
+('00000000-0000-0000-0000-000000000051', 'SECONDARY KEY', 'C', TRUE, 3),
+('00000000-0000-0000-0000-000000000051', 'FOREIGN KEY', 'D', FALSE, 4),
+-- Q53
+('00000000-0000-0000-0000-000000000053', 'x * e^(x-1)', 'A', FALSE, 1),
+('00000000-0000-0000-0000-000000000053', 'e^x', 'B', TRUE, 2),
+('00000000-0000-0000-0000-000000000053', 'e', 'C', FALSE, 3),
+('00000000-0000-0000-0000-000000000053', '0', 'D', FALSE, 4);
+
 -- Demo Paper 1: Operating Systems Final
 INSERT INTO exams (id, title, subject_id, description, instructions, start_datetime, end_datetime, duration_minutes, total_marks, pass_marks, status, created_by, is_published) VALUES
 ('00000000-0000-0000-0000-000000000042',
