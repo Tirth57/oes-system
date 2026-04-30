@@ -95,14 +95,6 @@ app.get('/health', async (req, res) => {
   });
 });
 
-// ─── Frontend SPA fallback ────────────────────────────────────
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/')) {
-    return error(res, 'API endpoint not found', 404);
-  }
-  res.sendFile(path.join(__dirname, '../../frontend/index.html'));
-});
-
 // ─── Temporary Debug Route ────────────────────────────────────
 app.get('/api/debug-reset', async (req, res) => {
   const { pool } = require('./config/database');
@@ -127,6 +119,14 @@ app.get('/api/debug-reset', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Frontend SPA fallback ────────────────────────────────────
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return error(res, 'API endpoint not found', 404);
+  }
+  res.sendFile(path.join(__dirname, '../../frontend/index.html'));
 });
 
 // ─── Global Error Handler ─────────────────────────────────────
