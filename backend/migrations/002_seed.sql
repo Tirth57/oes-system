@@ -2,19 +2,6 @@
 -- Seed Data for OES
 -- ============================================================
 
--- Default Grade Scale
-INSERT INTO grade_scales (id, name, created_by, is_default) VALUES
-('00000000-0000-0000-0000-000000000001', 'Standard Grade Scale', '00000000-0000-0000-0000-000000000002', TRUE);
-
-INSERT INTO grade_scale_ranges (scale_id, grade_label, min_percentage, max_percentage, description) VALUES
-('00000000-0000-0000-0000-000000000001', 'A+', 90, 100, 'Outstanding'),
-('00000000-0000-0000-0000-000000000001', 'A',  80, 89.99, 'Excellent'),
-('00000000-0000-0000-0000-000000000001', 'B+', 70, 79.99, 'Very Good'),
-('00000000-0000-0000-0000-000000000001', 'B',  60, 69.99, 'Good'),
-('00000000-0000-0000-0000-000000000001', 'C',  50, 59.99, 'Average'),
-('00000000-0000-0000-0000-000000000001', 'D',  40, 49.99, 'Below Average'),
-('00000000-0000-0000-0000-000000000001', 'F',  0,  39.99, 'Fail');
-
 -- Admin User (password: Admin@1234)
 INSERT INTO users (id, email, password_hash, role, status, full_name, email_verified) VALUES
 ('00000000-0000-0000-0000-000000000002',
@@ -48,6 +35,19 @@ INSERT INTO notification_preferences (user_id) VALUES
 ('00000000-0000-0000-0000-000000000004'),
 ('00000000-0000-0000-0000-000000000005'),
 ('00000000-0000-0000-0000-000000000006');
+
+-- Default Grade Scale
+INSERT INTO grade_scales (id, name, created_by, is_default) VALUES
+('00000000-0000-0000-0000-000000000001', 'Standard Grade Scale', '00000000-0000-0000-0000-000000000002', TRUE);
+
+INSERT INTO grade_scale_ranges (scale_id, grade_label, min_percentage, max_percentage, description) VALUES
+('00000000-0000-0000-0000-000000000001', 'A+', 90, 100, 'Outstanding'),
+('00000000-0000-0000-0000-000000000001', 'A',  80, 89.99, 'Excellent'),
+('00000000-0000-0000-0000-000000000001', 'B+', 70, 79.99, 'Very Good'),
+('00000000-0000-0000-0000-000000000001', 'B',  60, 69.99, 'Good'),
+('00000000-0000-0000-0000-000000000001', 'C',  50, 59.99, 'Average'),
+('00000000-0000-0000-0000-000000000001', 'D',  40, 49.99, 'Below Average'),
+('00000000-0000-0000-0000-000000000001', 'F',  0,  39.99, 'Fail');
 
 -- Sample Subjects
 INSERT INTO subjects (id, name, code, department, created_by) VALUES

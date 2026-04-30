@@ -3,6 +3,36 @@
 -- PostgreSQL 14+
 -- ============================================================
 
+-- Drop existing tables if re-running
+DROP TABLE IF EXISTS system_settings CASCADE;
+DROP TABLE IF EXISTS token_blacklist CASCADE;
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS notification_preferences CASCADE;
+DROP TABLE IF EXISTS notifications CASCADE;
+DROP TABLE IF EXISTS tab_switch_logs CASCADE;
+DROP TABLE IF EXISTS submission_answers CASCADE;
+DROP TABLE IF EXISTS exam_submissions CASCADE;
+DROP TABLE IF EXISTS exam_enrollments CASCADE;
+DROP TABLE IF EXISTS exam_random_criteria CASCADE;
+DROP TABLE IF EXISTS exam_questions CASCADE;
+DROP TABLE IF EXISTS exams CASCADE;
+DROP TABLE IF EXISTS grade_scale_ranges CASCADE;
+DROP TABLE IF EXISTS grade_scales CASCADE;
+DROP TABLE IF EXISTS question_options CASCADE;
+DROP TABLE IF EXISTS questions CASCADE;
+DROP TABLE IF EXISTS topics CASCADE;
+DROP TABLE IF EXISTS subjects CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS user_status CASCADE;
+DROP TYPE IF EXISTS question_type CASCADE;
+DROP TYPE IF EXISTS difficulty_level CASCADE;
+DROP TYPE IF EXISTS exam_status CASCADE;
+DROP TYPE IF EXISTS submission_status CASCADE;
+DROP TYPE IF EXISTS notification_type CASCADE;
+DROP TYPE IF EXISTS answer_status CASCADE;
+
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
